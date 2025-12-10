@@ -1,0 +1,225 @@
+{
+  "openapi": "3.0.3",
+  "info": { "title": "Kaburlu Backend API", "version": "1.0.0" },
+  "servers": [ { "url": "http://localhost:4000" } ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": { "type": "http", "scheme": "bearer", "bearerFormat": "JWT" }
+    }
+  },
+  "security": [ { "bearerAuth": [] } ],
+  "paths": {
+    "/api": {
+      "get": { "summary": "API health/version", "responses": { "200": { "description": "OK" } } }
+    },
+    "/api/auth/register": {
+      "post": {
+        "summary": "Register a user",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name", "email", "phone", "mpin", "role"],
+                "properties": {
+                  "name": { "type": "string", "example": "Demo User" },
+                  "email": { "type": "string", "format": "email", "example": "demo@kaburlu.test" },
+                  "phone": { "type": "string", "example": "9999999999" },
+                  "mpin": { "type": "string", "description": "6-digit MPIN", "example": "123456" },
+                  "role": { "type": "string", "enum": ["influencer", "brand", "admin"], "example": "influencer" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Registered",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": { "type": "integer", "example": 1 },
+                    "email": { "type": "string", "example": "demo@kaburlu.test" },
+                    "role": { "type": "string", "example": "influencer" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "summary": "Login and get JWT",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "mpin"],
+                "properties": {
+                  "email": { "type": "string", "format": "email", "example": "influencer@kaburlu.test" },
+                  "mpin": { "type": "string", "description": "6-digit MPIN", "example": "123456" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Logged in" } }
+      }
+    },
+    "/api/influencers/me": {
+      "get": {
+        "tags": ["Influencers"],
+        "summary": "Get current influencer",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": { "type": "integer", "example": 3 },
+                    "userId": { "type": "integer", "example": 2 },
+                    "handle": { "type": "string", "example": "@demo" },
+                    "states": { "type": "array", "items": { "type": "string" }, "example": ["Telangana"] },
+                    "languages": { "type": "array", "items": { "type": "string" }, "example": ["Telugu", "English"] },
+                    "socialLinks": { "type": "object", "example": { "instagram": "@demo", "youtube": "https://youtube.com/@demo" } },
+                    "followers": { "type": "object", "example": { "instagram": 12000 } },
+                    "bio": { "type": "string", "example": "Creator focused on local food and culture." },
+                    "profilePackUrl": { "type": "string", "example": "/api/profile-builder/pack/uuid" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": ["Influencers"],
+        "summary": "Update influencer profile",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "handle": { "type": "string", "example": "@myhandle" },
+                  "countryId": { "type": "integer", "example": 101 },
+                  "stateId": { "type": "integer", "example": 36 },
+                  "stateIds": { "type": "array", "items": { "type": "integer" }, "example": [36, 29] },
+                  "districtId": { "type": "integer", "example": 540 },
+                  "addressLine1": { "type": "string", "example": "Flat 12, Sunrise Residency" },
+                  "addressLine2": { "type": "string", "example": "Madhapur, Near Metro" },
+                  "postalCode": { "type": "string", "example": "500081" },
+                  "states": { "type": "array", "items": { "type": "string" }, "example": ["Telangana", "Karnataka"] },
+                  "languages": { "type": "array", "items": { "type": "string" }, "example": ["Telugu", "English"] },
+                  "socialLinks": { "type": "object", "example": { "instagram": "@myinsta", "youtube": "https://youtube.com/@me" } },
+                  "followers": { "type": "object", "example": { "instagram": 15000 } },
+                  "bio": { "type": "string", "example": "Short bio about my content and audience." }
+                }
+              },
+              "example": {
+                "handle": "@myhandle",
+                "countryId": 101,
+                "stateIds": [36, 29],
+                "districtId": 540,
+                "addressLine1": "Flat 12, Sunrise Residency",
+                "addressLine2": "Madhapur, Near Metro",
+                "postalCode": "500081",
+                "languages": ["Telugu", "English"],
+                "socialLinks": { "instagram": "@myinsta", "youtube": "https://youtube.com/@me" },
+                "followers": { "instagram": 15000 },
+                "bio": "Short bio about my content and audience."
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Updated" } }
+      }
+    },
+    "/api/ads": {
+      "get": { "summary": "List ads", "responses": { "200": { "description": "OK" } } },
+      "post": { "summary": "Create ad (brand)", "responses": { "200": { "description": "Created" } } }
+    },
+    "/api/applications/{adId}/apply": {
+      "post": {
+        "summary": "Apply to ad",
+        "parameters": [ { "name": "adId", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "responses": { "200": { "description": "Applied" } }
+      }
+    },
+    "/api/applications/submit/{appId}": {
+      "post": {
+        "summary": "Submit deliverable",
+        "parameters": [ { "name": "appId", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "responses": { "200": { "description": "Submitted" } }
+      }
+    },
+    "/api/applications/approve/{appId}": {
+      "post": {
+        "summary": "Approve and payout",
+        "parameters": [ { "name": "appId", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "responses": { "200": { "description": "Approved" } }
+      }
+    },
+    "/api/profile-builder/generate": {
+      "post": { "summary": "Generate influencer pack", "responses": { "200": { "description": "Generated" } } }
+    },
+    "/api/profile-builder/pack/{id}": {
+      "get": {
+        "summary": "Get a generated pack",
+        "parameters": [ { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "responses": { "200": { "description": "OK" } }
+      }
+    }
+    ,
+    "/api/media/upload": {
+      "post": {
+        "summary": "Upload media to Cloudflare R2",
+        "description": "Uploads an image or video and returns a public URL",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": { "type": "string", "format": "binary" }
+                },
+                "required": ["file"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Uploaded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "url": { "type": "string", "example": "https://pub-...r2.dev/uploads/2/image/uuid-file.jpg" },
+                    "key": { "type": "string", "example": "uploads/2/image/uuid-file.jpg" },
+                    "type": { "type": "string", "example": "image" },
+                    "sizeMB": { "type": "number", "example": 2.45 }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
