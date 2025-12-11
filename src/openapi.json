@@ -1,7 +1,10 @@
 {
   "openapi": "3.0.3",
   "info": { "title": "Kaburlu Backend API", "version": "1.0.0" },
-  "servers": [ { "url": "http://localhost:4000" } ],
+  "servers": [
+    { "url": "http://localhost:4000", "description": "Local development" },
+    { "url": "https://influapi.kaburlumedia.com", "description": "Production" }
+  ],
   "tags": [
     { "name": "Auth", "description": "User registration and login" },
     { "name": "Influencers", "description": "Influencer profile and data" },
