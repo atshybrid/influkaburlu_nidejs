@@ -21,6 +21,12 @@ async function seed() {
   await db.UserRole.create({ userId: influencerUser.id, roleId: roleInfluencer.id });
   const influencer = await db.Influencer.create({ userId: influencerUser.id, handle:'@demo', states:['Telangana'], languages:['Telugu'], socialLinks:{instagram:'@demo'} });
   const ad = await db.Ad.create({ brandId: brand.id, title:'Demo Ad All India', description:'Promote product', targetStates:['Telangana','Andhra Pradesh'], language:'Telugu', deliverableType:'reel', payPerInfluencer:1200, budget:12000, deadline: new Date(Date.now()+7*24*3600*1000) });
+  // Super Admin default login
+  const superMpinHash = await bcrypt.hash('199229', 10);
+  await db.User.findOrCreate({
+    where: { phone: '8282868389' },
+    defaults: { name: 'Super Admin', email: 'superadmin@kaburlu.test', phone: '8282868389', passwordHash: superMpinHash, role: 'admin' }
+  });
   console.log('Seeded demo data');
   process.exit(0);
 }

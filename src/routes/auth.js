@@ -1,5 +1,12 @@
 const router = require('express').Router();
 const ctrl = require('../controllers/authController');
+const auth = require('../middleware/auth');
 router.post('/register', ctrl.register);
 router.post('/login', ctrl.login);
+router.post('/login-mobile', ctrl.loginMobile);
+router.post('/request-mpin-reset', ctrl.requestMpinReset);
+router.post('/verify-mpin-reset', ctrl.verifyMpinReset);
+router.post('/refresh', ctrl.refreshToken);
+router.post('/logout', ctrl.logout);
+router.post('/logout-all', auth(), ctrl.logoutAll);
 module.exports = router;

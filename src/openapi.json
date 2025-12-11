@@ -2,18 +2,131 @@
   "openapi": "3.0.3",
   "info": { "title": "Kaburlu Backend API", "version": "1.0.0" },
   "servers": [ { "url": "http://localhost:4000" } ],
+  "tags": [
+    { "name": "Auth", "description": "User registration and login" },
+    { "name": "Influencers", "description": "Influencer profile and data" },
+    { "name": "Ads", "description": "Brand ad postings and listings" },
+    { "name": "Applications", "description": "Applying to ads and deliverables" },
+    { "name": "Profile Builder", "description": "AI-generated influencer profile packs" },
+    { "name": "Media", "description": "Media uploads to Cloudflare R2" },
+    { "name": "Locations", "description": "Country, state, district lookup" }
+  ],
   "components": {
     "securitySchemes": {
       "bearerAuth": { "type": "http", "scheme": "bearer", "bearerFormat": "JWT" }
+    },
+    "schemas": {
+      "Influencer": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "userId": { "type": "integer" },
+          "handle": { "type": "string" },
+          "profilePicUrl": { "type": "string" },
+          "posts": { "type": "array", "items": { "type": "string" } },
+          "rateCards": { "type": "array", "items": { "type": "object" } },
+          "availability": { "type": "array", "items": { "type": "object" } },
+          "adPricing": {
+            "type": "object",
+            "properties": {
+              "instagramPost": { "type": "number", "example": 5000 },
+              "instagramStory": { "type": "number", "example": 2500 },
+              "instagramReel": { "type": "number", "example": 8000 },
+              "youtubeShort": { "type": "number", "example": 10000 },
+              "youtubeIntegration": { "type": "number", "example": 25000 },
+              "travelAllowancePerDay": { "type": "number", "example": 2000 },
+              "negotiable": { "type": "boolean", "example": true }
+            }
+          },
+          "countryId": { "type": "integer" },
+          "stateId": { "type": "integer" },
+          "stateIds": { "type": "array", "items": { "type": "integer" } },
+          "districtId": { "type": "integer" },
+          "addressLine1": { "type": "string" },
+          "addressLine2": { "type": "string" },
+          "postalCode": { "type": "string" },
+          "states": { "type": "array", "items": { "type": "string" } },
+          "languages": { "type": "array", "items": { "type": "string" } },
+          "socialLinks": { "type": "object" },
+          "followers": { "type": "object" },
+          "bio": { "type": "string" },
+          "profilePackUrl": { "type": "string" }
+        }
+      },
+      "Ad": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "example": 101 },
+          "brandId": { "type": "integer", "example": 12 },
+          "title": { "type": "string", "example": "Regional food promotion" },
+          "description": { "type": "string", "example": "Promote our new product in Telangana" },
+          "targetStates": { "type": "array", "items": { "type": "string" }, "example": ["Telangana"] },
+          "language": { "type": "string", "example": "Telugu" },
+          "payPerInfluencer": { "type": "number", "example": 8000 },
+          "status": { "type": "string", "example": "open" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      
+      "Application": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "example": 5001 },
+          "adId": { "type": "integer", "example": 101 },
+          "influencerId": { "type": "integer", "example": 3 },
+          "state": { "type": "string", "example": "Telangana" },
+          "applyMessage": { "type": "string", "example": "Excited to collaborate!" },
+          "status": { "type": "string", "example": "applied" },
+          "submission": { "type": "object", "example": { "creativeUrl": "https://pub-.../uploads/3/video/uuid.mp4", "submittedAt": "2025-12-10T10:00:00Z" } }
+        }
+      },
+
+      "Payout": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "example": 9001 },
+          "influencerId": { "type": "integer", "example": 3 },
+          "grossAmount": { "type": "number", "example": 8000 },
+          "commission": { "type": "number", "example": 1600 },
+          "netAmount": { "type": "number", "example": 6400 },
+          "state": { "type": "string", "example": "Telangana" },
+          "status": { "type": "string", "example": "completed" }
+        }
+      }
     }
   },
   "security": [ { "bearerAuth": [] } ],
   "paths": {
+        "/api/locations/countries": {
+          "get": {
+            "tags": ["Locations"],
+            "summary": "List countries",
+            "responses": { "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "array", "items": { "type": "object", "properties": { "id": { "type": "integer" }, "name": { "type": "string" } } } }, "example": [{ "id": 101, "name": "India" }] } } } }
+          }
+        },
+        "/api/locations/states": {
+          "get": {
+            "tags": ["Locations"],
+            "summary": "List states",
+            "parameters": [ { "name": "countryId", "in": "query", "schema": { "type": "integer" }, "example": 101 } ],
+            "responses": { "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "array", "items": { "type": "object", "properties": { "id": { "type": "integer" }, "name": { "type": "string" }, "countryId": { "type": "integer" } } } }, "example": [{ "id": 36, "name": "Telangana", "countryId": 101 }] } } } }
+          }
+        },
+        "/api/locations/districts": {
+          "get": {
+            "tags": ["Locations"],
+            "summary": "List districts",
+            "parameters": [ { "name": "stateId", "in": "query", "schema": { "type": "integer" }, "example": 36 } ],
+            "responses": { "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "array", "items": { "type": "object", "properties": { "id": { "type": "integer" }, "name": { "type": "string" }, "stateId": { "type": "integer" } } } }, "example": [{ "id": 540, "name": "Hyderabad", "stateId": 36 }] } } } }
+          }
+        },
     "/api": {
       "get": { "summary": "API health/version", "responses": { "200": { "description": "OK" } } }
     },
     "/api/auth/register": {
+        "description": "Registers a user with role influencer/brand/admin. Influencer/Brand profiles are auto-created.",
       "post": {
+        "tags": ["Auth"],
         "summary": "Register a user",
         "security": [],
         "requestBody": {
@@ -49,14 +162,49 @@
                 }
               }
             }
-          }
+          },
+          "400": { "description": "Validation error (e.g., mpin format)" }
         }
+      }
+    },
+    "/api/locations/bulk/states": {
+      "post": {
+        "tags": ["Locations"],
+        "summary": "Bulk upload states via CSV",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": { "type": "object", "properties": { "file": { "type": "string", "format": "binary" } }, "required": ["file"] }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Upload result", "content": { "application/json": { "schema": { "type": "object", "properties": { "created": { "type": "integer" }, "updated": { "type": "integer" } } }, "example": { "created": 25, "updated": 3 } } } }, "401": { "description": "Unauthorized" }, "403": { "description": "Forbidden" } }
+      }
+    },
+    "/api/locations/bulk/districts": {
+      "post": {
+        "tags": ["Locations"],
+        "summary": "Bulk upload districts via CSV",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": { "type": "object", "properties": { "file": { "type": "string", "format": "binary" } }, "required": ["file"] }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Upload result", "content": { "application/json": { "schema": { "type": "object", "properties": { "created": { "type": "integer" }, "updated": { "type": "integer" } } }, "example": { "created": 120, "updated": 4 } } } }, "401": { "description": "Unauthorized" }, "403": { "description": "Forbidden" } }
       }
     },
     "/api/auth/login": {
       "post": {
+        "tags": ["Auth"],
         "summary": "Login and get JWT",
         "security": [],
+        "description": "Login with email + mpin (or password). Returns JWT and role.",
         "requestBody": {
           "required": true,
           "content": {
@@ -72,7 +220,119 @@
             }
           }
         },
-        "responses": { "200": { "description": "Logged in" } }
+        "responses": {
+          "200": { "description": "Logged in", "content": { "application/json": { "schema": { "type": "object", "properties": { "token": { "type": "string" }, "expiresIn": { "type": "integer", "example": 900 }, "expiresAt": { "type": "string", "format": "date-time" }, "refreshToken": { "type": "string" }, "refreshExpiresAt": { "type": "string", "format": "date-time" }, "user": { "type": "object", "properties": { "id": { "type": "integer" }, "role": { "type": "string" }, "name": { "type": "string" }, "handle": { "type": "string", "nullable": true } } } } }, "example": { "token": "eyJhbGciOi...", "expiresIn": 900, "expiresAt": "2025-12-10T10:15:00.000Z", "refreshToken": "ab12...", "refreshExpiresAt": "2025-12-17T10:00:00.000Z", "user": { "id": 4, "role": "influencer", "name": "Demo User", "handle": "@demo" } } } } },
+          "401": { "description": "Invalid credentials" }
+        }
+      }
+    },
+    "/api/auth/login-mobile": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Login with mobile number + MPIN",
+        "security": [],
+        "description": "Authenticate using phone number and 6-digit MPIN. Returns JWT and role.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["phone", "mpin"],
+                "properties": {
+                  "phone": { "type": "string", "example": "9999999999" },
+                  "mpin": { "type": "string", "example": "123456" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Logged in", "content": { "application/json": { "schema": { "type": "object", "properties": { "token": { "type": "string" }, "expiresIn": { "type": "integer", "example": 900 }, "expiresAt": { "type": "string", "format": "date-time" }, "refreshToken": { "type": "string" }, "refreshExpiresAt": { "type": "string", "format": "date-time" }, "user": { "type": "object", "properties": { "id": { "type": "integer" }, "role": { "type": "string" }, "name": { "type": "string" }, "handle": { "type": "string", "nullable": true } } } } }, "example": { "token": "eyJhbGciOi...", "expiresIn": 900, "expiresAt": "2025-12-10T10:15:00.000Z", "refreshToken": "ab12...", "refreshExpiresAt": "2025-12-17T10:00:00.000Z", "user": { "id": 4, "role": "influencer", "name": "Demo User", "handle": "@demo" } } } } },
+          "401": { "description": "Invalid credentials" }
+        }
+      }
+    },
+    "/api/auth/refresh": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Exchange refresh token for new access token",
+        "security": [],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "properties": { "refreshToken": { "type": "string" } }, "required": ["refreshToken"] }, "example": { "refreshToken": "ab12..." } } } },
+        "responses": { "200": { "description": "New access token", "content": { "application/json": { "schema": { "type": "object", "properties": { "token": { "type": "string" }, "expiresIn": { "type": "integer", "example": 900 }, "expiresAt": { "type": "string", "format": "date-time" }, "refreshToken": { "type": "string" }, "refreshExpiresAt": { "type": "string", "format": "date-time" }, "user": { "type": "object", "properties": { "id": { "type": "integer" }, "role": { "type": "string" }, "name": { "type": "string" }, "handle": { "type": "string", "nullable": true } } } } }, "example": { "token": "eyJhbGciOi...", "expiresIn": 900, "expiresAt": "2025-12-10T11:15:00.000Z", "refreshToken": "cd34...", "refreshExpiresAt": "2025-12-17T10:00:00.000Z", "user": { "id": 4, "role": "influencer", "name": "Demo User", "handle": "@demo" } } } } }, "401": { "description": "Invalid/expired refresh token" }, "429": { "description": "Too many requests" } }
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Logout: revoke a refresh token",
+        "security": [],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "properties": { "refreshToken": { "type": "string" } }, "required": ["refreshToken"] }, "example": { "refreshToken": "ab12..." } } } },
+        "responses": { "200": { "description": "Revoked", "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" } } }, "example": { "success": true } } } } }
+      }
+    },
+    "/api/auth/logout-all": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Global logout: revoke all refresh tokens for current user",
+        "security": [{ "bearerAuth": [] }],
+        "responses": { "200": { "description": "Revoked", "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" } } }, "example": { "success": true } } } }, "401": { "description": "Unauthorized" } }
+      }
+    },
+
+    "/api/auth/request-mpin-reset": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Request MPIN reset OTP",
+        "security": [],
+        "description": "Sends an OTP to the user's phone for MPIN reset.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["phone"],
+                "properties": {
+                  "phone": { "type": "string", "example": "9999999999" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "OTP sent", "content": { "application/json": { "schema": { "type": "object", "properties": { "requestId": { "type": "string" } } }, "example": { "requestId": "req_abcdef123456" } } } },
+          "400": { "description": "Phone not found or rate limited" }
+        }
+      }
+    },
+
+    "/api/auth/verify-mpin-reset": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Verify OTP and reset MPIN",
+        "security": [],
+        "description": "Verifies OTP and sets a new 6-digit MPIN for the account.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["phone", "otp", "newMpin"],
+                "properties": {
+                  "phone": { "type": "string", "example": "9999999999" },
+                  "otp": { "type": "string", "example": "432101" },
+                  "newMpin": { "type": "string", "example": "654321" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "MPIN updated", "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" } } }, "example": { "success": true } } } },
+          "400": { "description": "Invalid OTP or phone" }
+        }
       }
     },
     "/api/influencers/me": {
@@ -84,20 +344,7 @@
             "description": "OK",
             "content": {
               "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "id": { "type": "integer", "example": 3 },
-                    "userId": { "type": "integer", "example": 2 },
-                    "handle": { "type": "string", "example": "@demo" },
-                    "states": { "type": "array", "items": { "type": "string" }, "example": ["Telangana"] },
-                    "languages": { "type": "array", "items": { "type": "string" }, "example": ["Telugu", "English"] },
-                    "socialLinks": { "type": "object", "example": { "instagram": "@demo", "youtube": "https://youtube.com/@demo" } },
-                    "followers": { "type": "object", "example": { "instagram": 12000 } },
-                    "bio": { "type": "string", "example": "Creator focused on local food and culture." },
-                    "profilePackUrl": { "type": "string", "example": "/api/profile-builder/pack/uuid" }
-                  }
-                }
+                "schema": { "$ref": "#/components/schemas/Influencer" }
               }
             }
           }
@@ -110,24 +357,7 @@
           "required": true,
           "content": {
             "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "handle": { "type": "string", "example": "@myhandle" },
-                  "countryId": { "type": "integer", "example": 101 },
-                  "stateId": { "type": "integer", "example": 36 },
-                  "stateIds": { "type": "array", "items": { "type": "integer" }, "example": [36, 29] },
-                  "districtId": { "type": "integer", "example": 540 },
-                  "addressLine1": { "type": "string", "example": "Flat 12, Sunrise Residency" },
-                  "addressLine2": { "type": "string", "example": "Madhapur, Near Metro" },
-                  "postalCode": { "type": "string", "example": "500081" },
-                  "states": { "type": "array", "items": { "type": "string" }, "example": ["Telangana", "Karnataka"] },
-                  "languages": { "type": "array", "items": { "type": "string" }, "example": ["Telugu", "English"] },
-                  "socialLinks": { "type": "object", "example": { "instagram": "@myinsta", "youtube": "https://youtube.com/@me" } },
-                  "followers": { "type": "object", "example": { "instagram": 15000 } },
-                  "bio": { "type": "string", "example": "Short bio about my content and audience." }
-                }
-              },
+              "schema": { "$ref": "#/components/schemas/Influencer" },
               "example": {
                 "handle": "@myhandle",
                 "countryId": 101,
@@ -136,6 +366,15 @@
                 "addressLine1": "Flat 12, Sunrise Residency",
                 "addressLine2": "Madhapur, Near Metro",
                 "postalCode": "500081",
+                "adPricing": {
+                  "instagramPost": 5000,
+                  "instagramStory": 2500,
+                  "instagramReel": 8000,
+                  "youtubeShort": 10000,
+                  "youtubeIntegration": 25000,
+                  "travelAllowancePerDay": 2000,
+                  "negotiable": true
+                },
                 "languages": ["Telugu", "English"],
                 "socialLinks": { "instagram": "@myinsta", "youtube": "https://youtube.com/@me" },
                 "followers": { "instagram": 15000 },
@@ -144,47 +383,109 @@
             }
           }
         },
-        "responses": { "200": { "description": "Updated" } }
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Influencer" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/influencers/me/pricing": {
+      "get": {
+        "tags": ["Influencers"],
+        "summary": "Get influencer ad pricing",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Influencer" }, "example": { "adPricing": { "instagramPost": 5000 } } } }
+          }
+        }
+      },
+      "put": {
+        "tags": ["Influencers"],
+        "summary": "Update influencer ad pricing",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "properties": { "adPricing": { "$ref": "#/components/schemas/Influencer/properties/adPricing" } }, "required": ["adPricing"] }, "example": { "adPricing": { "instagramPost": 6000, "negotiable": true } } } }
+        },
+        "responses": { "200": { "description": "Updated", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Influencer" } } } } }
       }
     },
     "/api/ads": {
-      "get": { "summary": "List ads", "responses": { "200": { "description": "OK" } } },
-      "post": { "summary": "Create ad (brand)", "responses": { "200": { "description": "Created" } } }
+      "get": {
+        "tags": ["Ads"],
+        "summary": "List ads",
+        "parameters": [
+          { "name": "state", "in": "query", "schema": { "type": "string" }, "description": "Filter by target state", "example": "Telangana" },
+          { "name": "language", "in": "query", "schema": { "type": "string" }, "description": "Filter by language", "example": "Telugu" },
+          { "name": "page", "in": "query", "schema": { "type": "integer" }, "example": 1 },
+          { "name": "limit", "in": "query", "schema": { "type": "integer" }, "example": 20 }
+        ],
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Ad" } }, "example": [{ "id": 101, "title": "Regional food promotion", "payPerInfluencer": 8000 }] } } }
+        }
+      },
+      "post": {
+        "tags": ["Ads"],
+        "summary": "Create ad (brand)",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Ad" }, "example": { "title": "Regional food promotion", "description": "Promote in Telangana", "targetStates": ["Telangana"], "language": "Telugu", "payPerInfluencer": 8000 } } }
+        },
+        "responses": { "200": { "description": "Created", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Ad" } } } } }
+      }
     },
     "/api/applications/{adId}/apply": {
       "post": {
+        "tags": ["Applications"],
         "summary": "Apply to ad",
         "parameters": [ { "name": "adId", "in": "path", "required": true, "schema": { "type": "string" } } ],
-        "responses": { "200": { "description": "Applied" } }
+        "requestBody": { "required": false, "content": { "application/json": { "schema": { "type": "object", "properties": { "state": { "type": "string" }, "message": { "type": "string" } } }, "example": { "state": "Telangana", "message": "Excited to collaborate!" } } } },
+        "responses": { "200": { "description": "Applied", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Application" } } } } }
       }
     },
     "/api/applications/submit/{appId}": {
       "post": {
+        "tags": ["Applications"],
         "summary": "Submit deliverable",
         "parameters": [ { "name": "appId", "in": "path", "required": true, "schema": { "type": "string" } } ],
-        "responses": { "200": { "description": "Submitted" } }
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "properties": { "creativeUrl": { "type": "string" } }, "required": ["creativeUrl"] }, "example": { "creativeUrl": "https://pub-.../uploads/3/video/uuid.mp4" } } } },
+        "responses": { "200": { "description": "Submitted", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Application" } } } } }
       }
     },
     "/api/applications/approve/{appId}": {
       "post": {
+        "tags": ["Applications"],
         "summary": "Approve and payout",
         "parameters": [ { "name": "appId", "in": "path", "required": true, "schema": { "type": "string" } } ],
-        "responses": { "200": { "description": "Approved" } }
+        "responses": { "200": { "description": "Approved", "content": { "application/json": { "schema": { "type": "object", "properties": { "app": { "$ref": "#/components/schemas/Application" }, "payout": { "$ref": "#/components/schemas/Payout" } } } } } } }
       }
     },
     "/api/profile-builder/generate": {
-      "post": { "summary": "Generate influencer pack", "responses": { "200": { "description": "Generated" } } }
+      "post": {
+        "tags": ["Profile Builder"],
+        "summary": "Generate influencer pack",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "properties": { "name": { "type": "string" }, "niche": { "type": "string" }, "city": { "type": "string" } } }, "example": { "name": "Demo", "niche": "food", "city": "Hyderabad" } } } },
+        "responses": { "200": { "description": "Generated", "content": { "application/json": { "schema": { "type": "object", "properties": { "shortBio": { "type": "string" }, "longBio": { "type": "string" }, "jsonLd": { "type": "object" }, "packId": { "type": "string" }, "ai": { "type": "boolean" } } } } } } }
+      }
     },
     "/api/profile-builder/pack/{id}": {
       "get": {
+        "tags": ["Profile Builder"],
         "summary": "Get a generated pack",
         "parameters": [ { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } } ],
-        "responses": { "200": { "description": "OK" } }
+        "responses": { "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "object" }, "example": { "msg": "Demo pack content for <id>" } } } } }
       }
     }
     ,
     "/api/media/upload": {
       "post": {
+        "tags": ["Media"],
         "summary": "Upload media to Cloudflare R2",
         "description": "Uploads an image or video and returns a public URL",
         "requestBody": {
@@ -214,10 +515,16 @@
                     "type": { "type": "string", "example": "image" },
                     "sizeMB": { "type": "number", "example": 2.45 }
                   }
+                },
+                "examples": {
+                  "image": { "value": { "url": "https://pub-.../uploads/2/image/uuid.jpg", "key": "uploads/2/image/uuid.jpg", "type": "image", "sizeMB": 1.2 } },
+                  "video": { "value": { "url": "https://pub-.../uploads/2/video/uuid.mp4", "key": "uploads/2/video/uuid.mp4", "type": "video", "sizeMB": 23.7 } }
                 }
               }
             }
-          }
+          },
+          "413": { "description": "File too large" },
+          "400": { "description": "Unsupported file type or missing file" }
         }
       }
     }
