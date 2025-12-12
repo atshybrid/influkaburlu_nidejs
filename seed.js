@@ -19,7 +19,33 @@ async function seed() {
   const brand = await db.Brand.create({ userId: brandUser.id, companyName:'Demo Brand' });
   const influencerUser = await db.User.create({ name:'Demo Influencer', email:'influencer@kaburlu.test', phone:'8888888888', passwordHash: pw, role:'influencer' });
   await db.UserRole.create({ userId: influencerUser.id, roleId: roleInfluencer.id });
-  const influencer = await db.Influencer.create({ userId: influencerUser.id, handle:'@demo', states:['Telangana'], languages:['Telugu'], socialLinks:{instagram:'@demo'} });
+  const influencer = await db.Influencer.create({
+    userId: influencerUser.id,
+    handle: '@demo',
+    countryId: 101,
+    stateId: 36,
+    stateIds: [36, 29],
+    districtId: 540,
+    addressLine1: 'Flat 12, Sunrise Residency',
+    addressLine2: 'Madhapur, Near Metro',
+    postalCode: '500081',
+    states: ['Telangana'],
+    languages: ['Telugu', 'English'],
+    socialLinks: { instagram: '@demo', youtube: 'https://youtube.com/@demo' },
+    followers: { instagram: 15000 },
+    bio: 'Sample influencer for testing dashboards and APIs.',
+    adPricing: {
+      instagramPost: 5000,
+      instagramStory: 2500,
+      instagramReel: 8000,
+      youtubeShort: 10000,
+      youtubeIntegration: 25000,
+      travelAllowancePerDay: 2000,
+      negotiable: true
+    },
+    verificationStatus: 'green-tick',
+    badges: ['top-creator']
+  });
   const ad = await db.Ad.create({ brandId: brand.id, title:'Demo Ad All India', description:'Promote product', targetStates:['Telangana','Andhra Pradesh'], language:'Telugu', deliverableType:'reel', payPerInfluencer:1200, budget:12000, deadline: new Date(Date.now()+7*24*3600*1000) });
   // Super Admin default login
   const superMpinHash = await bcrypt.hash('199229', 10);

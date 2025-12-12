@@ -54,6 +54,9 @@
           "followers": { "type": "object" },
           "bio": { "type": "string" },
           "profilePackUrl": { "type": "string" }
+          ,
+          "verificationStatus": { "type": "string", "enum": ["none", "green-tick", "silver", "gold"], "example": "green-tick" },
+          "badges": { "type": "array", "items": { "type": "string" }, "example": ["top-creator", "verified"] }
         }
       },
       "Ad": {
@@ -347,7 +350,27 @@
             "description": "OK",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Influencer" }
+                "schema": { "$ref": "#/components/schemas/Influencer" },
+                "example": {
+                  "id": 1,
+                  "handle": "@demo",
+                  "countryId": 101,
+                  "stateId": 36,
+                  "stateIds": [36, 29],
+                  "districtId": 540,
+                  "languages": ["Telugu"],
+                  "socialLinks": { "instagram": "@demo" },
+                  "location": {
+                    "country": 101,
+                    "countryName": "India",
+                    "state": 36,
+                    "stateName": "Telangana",
+                    "stateIds": [36, 29],
+                    "stateNames": ["Telangana", "Karnataka"],
+                    "district": 540,
+                    "districtName": "Hyderabad"
+                  }
+                }
               }
             }
           }
@@ -396,6 +419,53 @@
             }
           }
         }
+      }
+    },
+    "/api/influencers/dashboard": {
+      "get": {
+        "tags": ["Influencers"],
+        "summary": "Influencer dashboard aggregates",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "influencer": { "type": "object", "properties": { "id": { "type": "integer" }, "handle": { "type": "string" }, "verificationStatus": { "type": "string" }, "badges": { "type": "array", "items": { "type": "string" } } } },
+                    "metrics": { "type": "object", "properties": { "activeBriefs": { "type": "integer" }, "pendingApprovals": { "type": "integer" }, "earningsMonth": { "type": "number" }, "nextPayout": { "type": "string" } } },
+                    "calendar": { "type": "object", "properties": { "days": { "type": "array", "items": { "type": "object", "properties": { "date": { "type": "string" }, "hasTask": { "type": "boolean" } } } } } },
+                    "briefs": { "type": "object", "properties": { "items": { "type": "array", "items": { "type": "object", "properties": { "campaign": { "type": "string" }, "type": { "type": "string" }, "due": { "type": "string" }, "status": { "type": "string", "enum": ["In progress", "Pending approval", "Assigned", "Completed"] } } } } } },
+                    "payouts": { "type": "object", "properties": { "history": { "type": "array", "items": { "type": "object", "properties": { "month": { "type": "string" }, "amount": { "type": "number" }, "status": { "type": "string" } } } }, "nextPayout": { "type": "string" } } }
+                  }
+                },
+                "example": {
+                  "influencer": { "id": 1, "handle": "@demo", "verificationStatus": "green-tick", "badges": ["top-creator"] },
+                  "metrics": { "activeBriefs": 3, "pendingApprovals": 2, "earningsMonth": 1280, "nextPayout": "2025-12-28" },
+                  "calendar": { "days": [ { "date": "2025-12-12", "hasTask": true }, { "date": "2025-12-13", "hasTask": false } ] },
+                  "briefs": { "items": [ { "campaign": "Acme Fitness", "type": "TikTok + Stories", "due": "2025-12-20", "status": "In progress" }, { "campaign": "Glow Cosmetics", "type": "UGC video", "due": "2025-12-15", "status": "Pending approval" }, { "campaign": "Neo Tech", "type": "Instagram Reel", "due": "2025-12-26", "status": "Assigned" } ] },
+                  "payouts": { "history": [ { "month": "Nov", "amount": 980, "status": "Paid" }, { "month": "Oct", "amount": 1120, "status": "Paid" }, { "month": "Sep", "amount": 870, "status": "Paid" } ], "nextPayout": "2025-12-28" }
+                }
+              }
+            }
+          },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/api/influencers/{id}/badges": {
+      "put": {
+        "tags": ["Influencers"],
+        "summary": "Assign verification/badges (admin)",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [ { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } } ],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "properties": { "verificationStatus": { "type": "string" }, "badges": { "type": "array", "items": { "type": "string" } } } }, "example": { "verificationStatus": "green-tick", "badges": ["top-creator"] } } }
+        },
+        "responses": { "200": { "description": "Updated", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Influencer" } } } }, "401": { "description": "Unauthorized" }, "403": { "description": "Forbidden" } }
       }
     },
     "/api/influencers/me/pricing": {

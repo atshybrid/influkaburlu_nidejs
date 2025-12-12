@@ -18,7 +18,9 @@ module.exports = (sequelize, DataTypes) => {
     posts: { type: DataTypes.JSONB, defaultValue: [] },
     rateCards: { type: DataTypes.JSONB, defaultValue: [] },
     availability: { type: DataTypes.JSONB, defaultValue: [] },
-    profilePackUrl: { type: DataTypes.STRING }
+    profilePackUrl: { type: DataTypes.STRING },
+    verificationStatus: { type: DataTypes.STRING, defaultValue: 'none' },
+    badges: { type: DataTypes.JSONB, defaultValue: [] }
   });
   return Influencer;
 };

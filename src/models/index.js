@@ -2,7 +2,7 @@ const path = require('path');
 require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
 const { Sequelize } = require('sequelize');
 
-const commonOpts = {
+const commonOpts = { 
 	logging: false,
 	pool: { max: 10, min: 0, acquire: 15000, idle: 10000 },
 	dialect: 'postgres',
@@ -38,6 +38,28 @@ const OtpRequest = require('./otpRequest')(sequelize, Sequelize.DataTypes);
 const RefreshToken = require('./refreshToken')(sequelize, Sequelize.DataTypes);
 const { Country, State, District } = require('./location')(sequelize, Sequelize.DataTypes);
 const { Role, UserRole } = require('./role')(sequelize, Sequelize.DataTypes);
+
+async function ensureInfluencerBadgeColumns() {
+	const qi = sequelize.getQueryInterface();
+	try {
+		// Postgres-safe add columns if not exist
+		await sequelize.query('ALTER TABLE "Influencers" ADD COLUMN IF NOT EXISTS "verificationStatus" VARCHAR(32) DEFAULT \'none\'');
+		await sequelize.query('ALTER TABLE "Influencers" ADD COLUMN IF NOT EXISTS "badges" JSONB DEFAULT \'[]\'::jsonb');
+	} catch (e) {
+		// noop: older PG might not support IF NOT EXISTS; fallback checks
+		try {
+			const table = await qi.describeTable('Influencers');
+			if (!table.verificationStatus) {
+				await qi.addColumn('Influencers', 'verificationStatus', { type: Sequelize.DataTypes.STRING, defaultValue: 'none' });
+			}
+			if (!table.badges) {
+				await qi.addColumn('Influencers', 'badges', { type: Sequelize.DataTypes.JSONB, defaultValue: [] });
+			}
+		} catch (_) {}
+	}
+}
+
+ensureInfluencerBadgeColumns().catch(() => {});
 
 User.hasOne(Influencer, { foreignKey: 'userId' });
 Influencer.belongsTo(User, { foreignKey: 'userId' });
