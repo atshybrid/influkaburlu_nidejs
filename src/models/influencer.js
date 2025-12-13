@@ -20,7 +20,18 @@ module.exports = (sequelize, DataTypes) => {
     availability: { type: DataTypes.JSONB, defaultValue: [] },
     profilePackUrl: { type: DataTypes.STRING },
     verificationStatus: { type: DataTypes.STRING, defaultValue: 'none' },
-    badges: { type: DataTypes.JSONB, defaultValue: [] }
+    badges: { type: DataTypes.JSONB, defaultValue: [] },
+    ulid: { type: DataTypes.STRING(26), allowNull: false, unique: true },
+  }, {
+    tableName: 'Influencers',
   });
+
+  Influencer.beforeValidate((influencer) => {
+    if (!influencer.ulid) {
+      const { ulid } = require('ulid');
+      influencer.ulid = ulid();
+    }
+  });
+
   return Influencer;
 };

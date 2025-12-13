@@ -5,6 +5,12 @@ const { seedLocations } = require('./src/controllers/seedLocations');
 async function seed() {
   await db.sequelize.sync({ force: true });
   await seedLocations();
+  // Seed languages table from static data
+  try {
+    const langs = require('./src/data/languages.json');
+    await db.Language.bulkCreate(langs, { ignoreDuplicates: true });
+    console.log(`Seeded languages: ${langs.length}`);
+  } catch (e) { console.warn('Languages seed skipped:', e.message); }
   const pw = await bcrypt.hash('password', 10);
   // Seed roles
   const roleAdmin = await db.Role.findOrCreate({ where: { key: 'admin' }, defaults: { name: 'Admin' } }).then(r=>r[0]);
@@ -46,6 +52,19 @@ async function seed() {
     verificationStatus: 'green-tick',
     badges: ['top-creator']
   });
+  // Seed categories and link to influencer
+  const categories = [
+    { name: 'Tech', type: 'domain', purpose: 'Gadgets & Software' },
+    { name: 'Fashion', type: 'lifestyle', purpose: 'Apparel & Accessories' },
+    { name: 'Food', type: 'lifestyle', purpose: 'Cuisine & Reviews' },
+    { name: 'Travel', type: 'lifestyle', purpose: 'Destinations & Tips' },
+    { name: 'Education', type: 'knowledge', purpose: 'Learning & Tutorials' }
+  ];
+  try {
+    const createdCats = await db.Category.bulkCreate(categories);
+    await influencer.addCategories(createdCats.map(c => c.id));
+    console.log(`Seeded categories: ${createdCats.length}`);
+  } catch (e) { console.warn('Categories seed skipped:', e.message); }
   const ad = await db.Ad.create({ brandId: brand.id, title:'Demo Ad All India', description:'Promote product', targetStates:['Telangana','Andhra Pradesh'], language:'Telugu', deliverableType:'reel', payPerInfluencer:1200, budget:12000, deadline: new Date(Date.now()+7*24*3600*1000) });
   // Super Admin default login
   const superMpinHash = await bcrypt.hash('199229', 10);
@@ -53,6 +72,14 @@ async function seed() {
     where: { phone: '8282868389' },
     defaults: { name: 'Super Admin', email: 'superadmin@kaburlu.test', phone: '8282868389', passwordHash: superMpinHash, role: 'admin' }
   });
+  // Ensure ULIDs exist for all core tables (in case of legacy rows)
+  const { ulid } = require('ulid');
+  const brands = await db.Brand.findAll({ where: { ulid: null } });
+  for (const b of brands) { b.ulid = ulid(); await b.save(); }
+  const influencers = await db.Influencer.findAll({ where: { ulid: null } });
+  for (const i of influencers) { i.ulid = ulid(); await i.save(); }
+  const ads = await db.Ad.findAll({ where: { ulid: null } });
+  for (const a of ads) { a.ulid = ulid(); await a.save(); }
   console.log('Seeded demo data');
   process.exit(0);
 }

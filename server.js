@@ -45,6 +45,33 @@ async function connectWithRetry(retries = 8, delayMs = 1500) {
 connectWithRetry()
   .then(() => {
     app.listen(PORT, () => {
+      const hasRazorpay = !!process.env.RAZORPAY_KEY_ID && (!!process.env.RAZORPAY_SECRET || !!process.env.RAZORPAY_KEY_SECRET);
+      const env = process.env.NODE_ENV || 'development';
+      const keyId = process.env.RAZORPAY_KEY_ID || '';
+      const looksLiveKey = keyId.startsWith('rzp_live_');
+      if (!hasRazorpay) {
+        console.warn('Warning: Razorpay keys not set. Set RAZORPAY_KEY_ID and RAZORPAY_SECRET (or RAZORPAY_KEY_SECRET) in .env');
+      } else {
+        const maskedId = keyId ? keyId.slice(0, 6) + '...' + keyId.slice(-4) : 'unset';
+        console.log(`Razorpay key configured: ${maskedId}`);
+        if (env === 'development' && looksLiveKey) {
+          console.error('Blocked: LIVE Razorpay key detected in development. Switch to test keys (rzp_test_...) or set NODE_ENV=production for live.');
+          process.exit(1);
+        }
+      }
+      // Masked presence logs for other sensitive keys
+      const openaiKey = process.env.OPENAI_API_KEY || '';
+      if (openaiKey) {
+        const maskedOpenAI = openaiKey.slice(0, 7) + '...' + openaiKey.slice(-5);
+        console.log(`OpenAI key present: ${maskedOpenAI}`);
+      }
+      const r2AccessKeyId = process.env.R2_ACCESS_KEY_ID || '';
+      const r2Secret = process.env.R2_SECRET_ACCESS_KEY || '';
+      if (r2AccessKeyId && r2Secret) {
+        const maskedR2Id = r2AccessKeyId.slice(0, 6) + '...' + r2AccessKeyId.slice(-4);
+        const maskedR2Secret = r2Secret.slice(0, 6) + '...' + r2Secret.slice(-4);
+        console.log(`Cloudflare R2 keys present: ${maskedR2Id} / ${maskedR2Secret}`);
+      }
       console.log('Server running on port', PORT);
       console.log(`Swagger docs available at http://localhost:${PORT}/api-docs`);
     });
@@ -57,6 +84,11 @@ connectWithRetry()
         if (n) console.log(`Refresh cleanup removed ${n} expired tokens`);
       } catch (e) { console.warn('Refresh cleanup error', e.message); }
     }, intervalMs);
+    // Start media status cron if enabled
+    if (process.env.ENABLE_MEDIA_STATUS_CRON === 'true') {
+      const { startMediaStatusCron } = require('./src/jobs/mediaStatusCron');
+      startMediaStatusCron();
+    }
   })
   .catch(err => {
     console.error('Unable to connect to DB:', err);

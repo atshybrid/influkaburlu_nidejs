@@ -33,9 +33,13 @@ const Influencer = require('./influencer')(sequelize, Sequelize.DataTypes);
 const Brand = require('./brand')(sequelize, Sequelize.DataTypes);
 const Ad = require('./ad')(sequelize, Sequelize.DataTypes);
 const Application = require('./application')(sequelize, Sequelize.DataTypes);
+const Post = require('./post')(sequelize, Sequelize.DataTypes);
 const Payout = require('./payout')(sequelize, Sequelize.DataTypes);
+const Language = require('./language')(sequelize, Sequelize.DataTypes);
+const Category = require('./category')(sequelize, Sequelize.DataTypes);
 const OtpRequest = require('./otpRequest')(sequelize, Sequelize.DataTypes);
 const RefreshToken = require('./refreshToken')(sequelize, Sequelize.DataTypes);
+const InfluencerAdMedia = require('./influencerAdMedia')(sequelize, Sequelize.DataTypes);
 const { Country, State, District } = require('./location')(sequelize, Sequelize.DataTypes);
 const { Role, UserRole } = require('./role')(sequelize, Sequelize.DataTypes);
 
@@ -61,6 +65,33 @@ async function ensureInfluencerBadgeColumns() {
 
 ensureInfluencerBadgeColumns().catch(() => {});
 
+async function ensureInfluencerAdMediaTable() {
+	const qi = sequelize.getQueryInterface();
+	try {
+		await qi.describeTable('InfluencerAdMedia');
+	} catch (e) {
+		await qi.createTable('InfluencerAdMedia', {
+			id: { type: Sequelize.DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+			postId: { type: Sequelize.DataTypes.INTEGER, allowNull: false },
+			influencerId: { type: Sequelize.DataTypes.INTEGER, allowNull: false },
+			adId: { type: Sequelize.DataTypes.INTEGER, allowNull: true },
+			provider: { type: Sequelize.DataTypes.STRING, allowNull: false, defaultValue: 'bunny' },
+			guid: { type: Sequelize.DataTypes.STRING, allowNull: false, unique: true },
+			playbackUrl: { type: Sequelize.DataTypes.STRING },
+			thumbnailUrl: { type: Sequelize.DataTypes.STRING },
+			status: { type: Sequelize.DataTypes.STRING, allowNull: false, defaultValue: 'created' },
+			sizeBytes: { type: Sequelize.DataTypes.BIGINT },
+			durationSec: { type: Sequelize.DataTypes.INTEGER },
+			meta: { type: Sequelize.DataTypes.JSONB, defaultValue: {} },
+			ulid: { type: Sequelize.DataTypes.STRING(26), allowNull: false, unique: true },
+			createdAt: { type: Sequelize.DataTypes.DATE, allowNull: false, defaultValue: Sequelize.fn('NOW') },
+			updatedAt: { type: Sequelize.DataTypes.DATE, allowNull: false, defaultValue: Sequelize.fn('NOW') },
+		});
+	}
+}
+
+ensureInfluencerAdMediaTable().catch(() => {});
+
 User.hasOne(Influencer, { foreignKey: 'userId' });
 Influencer.belongsTo(User, { foreignKey: 'userId' });
 
@@ -77,6 +108,10 @@ Influencer.hasMany(Application, { foreignKey: 'influencerId' });
 Application.belongsTo(Influencer, { foreignKey: 'influencerId' });
 
 Influencer.hasMany(Payout, { foreignKey: 'influencerId' });
+// Influencer categories (many-to-many)
+const InfluencerCategory = sequelize.define('InfluencerCategory', {}, { tableName: 'InfluencerCategories' });
+Influencer.belongsToMany(Category, { through: InfluencerCategory, foreignKey: 'influencerId' });
+Category.belongsToMany(Influencer, { through: InfluencerCategory, foreignKey: 'categoryId' });
 
 // OTP requests optional relation
 User.hasMany(OtpRequest, { foreignKey: 'userId' });
@@ -90,7 +125,19 @@ RefreshToken.belongsTo(User, { foreignKey: 'userId' });
 Role.belongsToMany(User, { through: UserRole, foreignKey: 'roleId' });
 User.belongsToMany(Role, { through: UserRole, foreignKey: 'userId' });
 
-module.exports = { sequelize, User, Influencer, Brand, Ad, Application, Payout, OtpRequest, RefreshToken };
+// Media associations
+const PostModel = Post;
+PostModel.hasMany(InfluencerAdMedia, { foreignKey: 'postId' });
+InfluencerAdMedia.belongsTo(PostModel, { foreignKey: 'postId' });
+Influencer.hasMany(InfluencerAdMedia, { foreignKey: 'influencerId' });
+InfluencerAdMedia.belongsTo(Influencer, { foreignKey: 'influencerId' });
+Ad.hasMany(InfluencerAdMedia, { foreignKey: 'adId' });
+InfluencerAdMedia.belongsTo(Ad, { foreignKey: 'adId' });
+
+module.exports = { sequelize, User, Influencer, Brand, Ad, Application, Payout, OtpRequest, RefreshToken, Post, InfluencerAdMedia };
+module.exports.Language = Language;
+module.exports.Category = Category;
+module.exports.InfluencerCategory = InfluencerCategory;
 module.exports.Country = Country;
 module.exports.State = State;
 module.exports.District = District;

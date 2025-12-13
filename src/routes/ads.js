@@ -3,4 +3,8 @@ const ctrl = require('../controllers/adsController');
 const auth = require('../middleware/auth');
 router.post('/', auth(['brand']), ctrl.createAd);
 router.get('/', ctrl.listAds);
+router.post('/feed', ctrl.feed);
+router.put('/:id', auth(['brand']), ctrl.updateAd);
+router.post('/:id/payment/initiate', auth(['brand']), ctrl.initiatePayment);
+router.post('/payment/confirm', ctrl.confirmPayment);
 module.exports = router;

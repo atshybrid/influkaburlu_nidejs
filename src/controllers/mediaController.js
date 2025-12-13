@@ -1,3 +1,65 @@
+const { InfluencerAdMedia, Post, Influencer, Ad } = require('../models');
+const { Op } = require('sequelize');
+
+// Public: list influencer ad media entries (canonical video records)
+exports.listInfluencerAdMedia = async (req, res) => {
+  try {
+    const {
+      status, // created|uploaded|processing|ready
+      influencerUlid,
+      postUlid,
+      adUlid,
+      language,
+      state,
+      category,
+      limit = 20,
+      page = 1,
+    } = req.query;
+
+    const where = { provider: 'bunny' };
+    if (status) where.status = status;
+
+    const include = [
+        { model: Post, attributes: ['id', 'ulid', 'caption', 'language', 'categories', 'states', 'type', 'status'], where: {} },
+        { model: Influencer, attributes: ['id', 'ulid', 'handle'] },
+        { model: Ad, attributes: ['id', 'ulid'], required: false },
+      ];
+
+    if (postUlid) include[0].where.ulid = postUlid;
+    if (language) include[0].where.language = language;
+    if (state) include[0].where.states = { [Op.contains]: [state] };
+    if (category) include[0].where.categories = { [Op.contains]: [category] };
+
+    if (influencerUlid) include[1].where = { ulid: influencerUlid };
+    if (adUlid) include[2].where = { ulid: adUlid };
+
+    const rows = await InfluencerAdMedia.findAll({
+      where,
+      include,
+      limit: Math.min(Number(limit) || 20, 100),
+      offset: (Number(page) - 1) * (Number(limit) || 20),
+      order: [['createdAt', 'DESC']],
+    });
+
+    const items = rows.map(r => ({
+      id: r.id,
+      ulid: r.ulid,
+      provider: r.provider,
+      guid: r.guid,
+      playbackUrl: r.playbackUrl,
+      thumbnailUrl: r.thumbnailUrl,
+      status: r.status,
+      sizeBytes: r.sizeBytes,
+      durationSec: r.durationSec,
+      meta: r.meta,
+      post: r.Post ? { ulid: r.Post.ulid, caption: r.Post.caption, language: r.Post.language, categories: r.Post.categories, states: r.Post.states, type: r.Post.type, status: r.Post.status } : null,
+      influencer: r.Influencer ? { ulid: r.Influencer.ulid, handle: r.Influencer.handle } : null,
+      ad: r.Ad ? { ulid: r.Ad.ulid } : null,
+    }));
+
+    res.json(items);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+};
 const crypto = require('crypto');
 const { uploadBuffer } = require('../utils/r2');
 

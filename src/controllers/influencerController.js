@@ -27,6 +27,7 @@ exports.me = async (req, res) => {
   } catch (_) {}
   const response = {
     ...infl.toJSON(),
+    idUlid: infl.ulid,
     location: {
       country: infl.countryId || null,
       countryName,
@@ -78,7 +79,7 @@ exports.dashboard = async (req, res) => {
     };
 
     res.json({
-      influencer: { id: infl.id, handle: infl.handle, verificationStatus: infl.verificationStatus, badges: infl.badges || [] },
+      influencer: { id: infl.id, idUlid: infl.ulid, handle: infl.handle, verificationStatus: infl.verificationStatus, badges: infl.badges || [] },
       metrics,
       calendar: { days },
       briefs: { items },
@@ -100,7 +101,7 @@ exports.update = async (req, res) => {
   }
   Object.assign(infl, body);
   await infl.save();
-  res.json(infl);
+  res.json({ ...infl.toJSON(), idUlid: infl.ulid });
 };
 
 // Admin can assign verification/badges to any influencer
@@ -112,5 +113,5 @@ exports.assignBadge = async (req, res) => {
   if (verificationStatus) infl.verificationStatus = verificationStatus;
   if (Array.isArray(badges)) infl.badges = badges;
   await infl.save();
-  res.json(infl);
+  res.json({ ...infl.toJSON(), idUlid: infl.ulid });
 };

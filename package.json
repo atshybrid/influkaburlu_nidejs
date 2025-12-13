@@ -6,10 +6,15 @@
     "start": "node server.js",
     "dev": "nodemon server.js",
     "seed": "node seed.js",
-    "build": "echo Building kaburlu-backend-v2 (no compile step)"
+    "build": "echo Building kaburlu-backend-v2 (no compile step)",
+    "backfill:media": "node src/scripts/backfillInfluencerAdMedia.js",
+    "update:media-status": "node src/scripts/updateInfluencerAdMediaStatus.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.948.0",
+    "@prisma/client": "^7.1.0",
+    "@prisma/config": "^7.1.0",
+    "axios": "^1.13.2",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "csv-parse": "^6.1.0",
@@ -18,14 +23,18 @@
     "express-fileupload": "^1.5.2",
     "jsonwebtoken": "^9.0.0",
     "multer": "^1.4.5-lts.1",
+    "node-fetch": "^2.7.0",
     "openai": "^4.55.0",
     "pg": "^8.11.0",
     "pg-hstore": "^2.3.4",
+    "prisma": "^7.1.0",
     "sequelize": "^6.32.1",
     "swagger-ui-express": "^5.0.1",
+    "ulid": "^2.3.0",
     "uuid": "^9.0.0"
   },
   "devDependencies": {
-    "nodemon": "^2.0.22"
+    "nodemon": "^2.0.22",
+    "sequelize-cli": "^6.6.3"
   }
 }

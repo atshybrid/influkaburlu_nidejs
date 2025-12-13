@@ -1,0 +1,12 @@
+// Prisma base setup to coexist with current Sequelize code.
+// Use `npx prisma db pull` to introspect existing Postgres schema.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// After running `prisma db pull`, models will be generated here.
