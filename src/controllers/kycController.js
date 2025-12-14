@@ -1,4 +1,5 @@
 const { Influencer, InfluencerKyc } = require('../models');
+const bcrypt = require('bcryptjs');
 
 function maskPan(pan) {
   if (!pan) return null;
@@ -47,6 +48,20 @@ exports.updateMe = async (req, res) => {
         kyc[f] = body[f];
       }
     }
+    // Aadhaar handling: store hash + last4 only
+    if (body.aadhaarNumber && originalStatus !== 'verified') {
+      const aad = String(body.aadhaarNumber).replace(/\D/g, '');
+      if (aad.length < 8) return res.status(400).json({ error: 'invalid_aadhaar' });
+      const salt = await bcrypt.genSalt(10);
+      kyc.aadhaarHash = await bcrypt.hash(aad, salt);
+      kyc.aadhaarLast4 = aad.slice(-4);
+    }
+    // Merge document URLs if provided shorthand fields
+    const docs = Object.assign({}, kyc.documents || {});
+    if (body.photoUrl) docs.photoUrl = body.photoUrl;
+    if (body.panPhotoUrl) docs.panPhotoUrl = body.panPhotoUrl;
+    if (body.aadhaarPhotoUrl) docs.aadhaarPhotoUrl = body.aadhaarPhotoUrl;
+    if (Object.keys(docs).length) kyc.documents = docs;
     if (typeof body.consent === 'boolean' && body.consent) kyc.consentTs = new Date();
     // Preserve verified status; otherwise keep or set to pending
     kyc.status = originalStatus === 'verified' ? 'verified' : 'pending';
@@ -54,8 +69,47 @@ exports.updateMe = async (req, res) => {
     const out = kyc.toJSON();
     const complete = isKycComplete(out);
     out.pan = maskPan(out.pan);
+    delete out.aadhaarHash;
     res.json({ status: out.status, kyc: out, meta: { isComplete: complete, askKyc: !complete } });
   } catch (err) {
     res.status(500).json({ error: 'server_error' });
   }
+};
+
+// Admin: list KYC by status
+exports.adminList = async (req, res) => {
+  try {
+    const { status = 'pending', limit = 50, offset = 0 } = req.query;
+    const where = status ? { status } : {};
+    const rows = await InfluencerKyc.findAll({ where, order: [['updatedAt','DESC']], limit: parseInt(limit,10), offset: parseInt(offset,10) });
+    const items = rows.map(r => { const o = r.toJSON(); o.pan = maskPan(o.pan); delete o.aadhaarHash; return o; });
+    res.json({ items });
+  } catch (e) { res.status(500).json({ error: 'server_error' }); }
+};
+
+// Admin: get one KYC
+exports.adminGet = async (req, res) => {
+  try {
+    const row = await InfluencerKyc.findOne({ where: { influencerId: req.params.influencerId } });
+    if (!row) return res.status(404).json({ error: 'not_found' });
+    const o = row.toJSON(); o.pan = maskPan(o.pan); delete o.aadhaarHash; res.json(o);
+  } catch (e) { res.status(500).json({ error: 'server_error' }); }
+};
+
+// Admin: set KYC status
+exports.adminSetStatus = async (req, res) => {
+  try {
+    const { influencerId } = req.params;
+    const { status, reason } = req.body || {};
+    if (!['verified','rejected','pending'].includes(status)) return res.status(400).json({ error: 'invalid_status' });
+    const row = await InfluencerKyc.findOne({ where: { influencerId } });
+    if (!row) return res.status(404).json({ error: 'not_found' });
+    row.status = status;
+    row.verifiedAt = status === 'verified' ? new Date() : null;
+    const docs = Object.assign({}, row.documents||{});
+    if (reason) docs.adminReason = reason;
+    row.documents = docs;
+    await row.save();
+    const o = row.toJSON(); o.pan = maskPan(o.pan); delete o.aadhaarHash; res.json(o);
+  } catch (e) { res.status(500).json({ error: 'server_error' }); }
 };

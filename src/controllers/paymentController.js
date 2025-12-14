@@ -67,3 +67,53 @@ exports.upsertMe = async (req, res) => {
     res.status(500).json({ error: 'server_error' });
   }
 };
+
+exports.removeMe = async (req, res) => {
+  try {
+    const infl = await Influencer.findOne({ where: { userId: req.user.id } });
+    if (!infl) return res.status(404).json({ error: 'not found' });
+    const id = parseInt(req.params.id, 10);
+    const row = await InfluencerPaymentMethod.findOne({ where: { id, influencerId: infl.id } });
+    if (!row) return res.status(404).json({ error: 'not_found' });
+    await row.destroy();
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: 'server_error' }); }
+};
+
+exports.setPreferredMe = async (req, res) => {
+  try {
+    const infl = await Influencer.findOne({ where: { userId: req.user.id } });
+    if (!infl) return res.status(404).json({ error: 'not found' });
+    const id = parseInt(req.params.id, 10);
+    const row = await InfluencerPaymentMethod.findOne({ where: { id, influencerId: infl.id } });
+    if (!row) return res.status(404).json({ error: 'not_found' });
+    await InfluencerPaymentMethod.update({ isPreferred: false }, { where: { influencerId: infl.id } });
+    row.isPreferred = true;
+    await row.save();
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: 'server_error' }); }
+};
+
+// Admin: list all payment methods (optional filter by status)
+exports.adminList = async (req, res) => {
+  try {
+    const { status, limit = 50, offset = 0 } = req.query;
+    const where = status ? { status } : {};
+    const items = await InfluencerPaymentMethod.findAll({ where, order: [['updatedAt','DESC']], limit: parseInt(limit,10), offset: parseInt(offset,10) });
+    res.json({ items });
+  } catch (e) { res.status(500).json({ error: 'server_error' }); }
+};
+
+// Admin: set status (e.g., verified/rejected)
+exports.adminSetStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body || {};
+    if (!['unverified','verified','rejected'].includes(status)) return res.status(400).json({ error: 'invalid_status' });
+    const row = await InfluencerPaymentMethod.findByPk(id);
+    if (!row) return res.status(404).json({ error: 'not_found' });
+    row.status = status;
+    await row.save();
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: 'server_error' }); }
+};

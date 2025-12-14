@@ -1,4 +1,4 @@
-const { Influencer, InfluencerPricing, User, Country, State, District } = require('../models');
+const { Influencer, InfluencerPricing, User, Country, State, District, InfluencerPaymentMethod } = require('../models');
 const { uploadBuffer } = require('../utils/r2');
 const fs = require('fs');
 const crypto = require('crypto');
@@ -42,6 +42,28 @@ exports.me = async (req, res) => {
       districtName
     }
   };
+  // Include payment methods (masked sensitive fields)
+  try {
+    const methods = await InfluencerPaymentMethod.findAll({ where: { influencerId: infl.id }, order: [['isPreferred','DESC'], ['updatedAt','DESC']] });
+    const items = methods.map(m => {
+      const obj = m.toJSON();
+      const num = obj.bankAccountNumber ? String(obj.bankAccountNumber) : null;
+      obj.bankAccountNumberMasked = num ? (num.length <= 4 ? '****' + num : '****' + num.slice(-4)) : null;
+      const upi = obj.upiId ? String(obj.upiId) : null;
+      if (upi) {
+        const parts = upi.split('@');
+        const name = parts[0] || '';
+        const bank = parts[1] || '';
+        const maskedName = name.length <= 2 ? name : name[0] + '***' + name.slice(-1);
+        obj.upiIdMasked = bank ? maskedName + '@' + bank : maskedName;
+      } else {
+        obj.upiIdMasked = null;
+      }
+      delete obj.bankAccountNumber;
+      return obj;
+    });
+    response.paymentMethods = items;
+  } catch (_) {}
   res.json(response);
 };
 

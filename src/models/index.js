@@ -43,6 +43,7 @@ const InfluencerAdMedia = require('./influencerAdMedia')(sequelize, Sequelize.Da
 const InfluencerPricing = require('./influencerPricing')(sequelize, Sequelize.DataTypes);
 const InfluencerKyc = require('./influencerKyc')(sequelize, Sequelize.DataTypes);
 const InfluencerPaymentMethod = require('./influencerPaymentMethod')(sequelize, Sequelize.DataTypes);
+const ProfilePack = require('./profilePack')(sequelize, Sequelize.DataTypes);
 const { Country, State, District } = require('./location')(sequelize, Sequelize.DataTypes);
 const { Role, UserRole } = require('./role')(sequelize, Sequelize.DataTypes);
 
@@ -151,6 +152,11 @@ async function ensureInfluencerKycTable() {
 			updatedAt: { type: Sequelize.DataTypes.DATE, allowNull: false, defaultValue: Sequelize.fn('NOW') },
 		});
 	}
+	try {
+		const t = await qi.describeTable('InfluencerKyc');
+		if (!t.aadhaarHash) await qi.addColumn('InfluencerKyc', 'aadhaarHash', { type: Sequelize.DataTypes.STRING });
+		if (!t.aadhaarLast4) await qi.addColumn('InfluencerKyc', 'aadhaarLast4', { type: Sequelize.DataTypes.STRING(4) });
+	} catch (_) {}
 }
 
 async function ensureInfluencerPaymentMethodTable() {
@@ -248,7 +254,11 @@ InfluencerKyc.belongsTo(Influencer, { foreignKey: 'influencerId' });
 Influencer.hasMany(InfluencerPaymentMethod, { foreignKey: 'influencerId' });
 InfluencerPaymentMethod.belongsTo(Influencer, { foreignKey: 'influencerId' });
 
-module.exports = { sequelize, User, Influencer, Brand, Ad, Application, Payout, OtpRequest, RefreshToken, Post, InfluencerAdMedia, InfluencerPricing, InfluencerKyc, InfluencerPaymentMethod };
+// Profile pack association
+Influencer.hasMany(ProfilePack, { foreignKey: 'influencerId' });
+ProfilePack.belongsTo(Influencer, { foreignKey: 'influencerId' });
+
+module.exports = { sequelize, User, Influencer, Brand, Ad, Application, Payout, OtpRequest, RefreshToken, Post, InfluencerAdMedia, InfluencerPricing, InfluencerKyc, InfluencerPaymentMethod, ProfilePack };
 module.exports.Language = Language;
 module.exports.Category = Category;
 module.exports.InfluencerCategory = InfluencerCategory;

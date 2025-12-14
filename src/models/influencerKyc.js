@@ -4,6 +4,8 @@ module.exports = (sequelize, DataTypes) => {
     fullName: { type: DataTypes.STRING },
     dob: { type: DataTypes.DATEONLY },
     pan: { type: DataTypes.STRING },
+    aadhaarHash: { type: DataTypes.STRING },
+    aadhaarLast4: { type: DataTypes.STRING(4) },
     addressLine1: { type: DataTypes.STRING },
     addressLine2: { type: DataTypes.STRING },
     postalCode: { type: DataTypes.STRING },

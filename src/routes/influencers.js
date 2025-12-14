@@ -23,6 +23,8 @@ router.get('/me/kyc', auth(['influencer']), require('../controllers/kycControlle
 router.put('/me/kyc', auth(['influencer']), require('../controllers/kycController').updateMe);
 router.get('/me/payment-methods', auth(['influencer']), require('../controllers/paymentController').listMe);
 router.put('/me/payment-methods', auth(['influencer']), require('../controllers/paymentController').upsertMe);
+router.delete('/me/payment-methods/:id', auth(['influencer']), require('../controllers/paymentController').removeMe);
+router.put('/me/payment-methods/:id/preferred', auth(['influencer']), require('../controllers/paymentController').setPreferredMe);
 // Admin badge assignment
 router.put('/:id/badges', auth(['admin']), ctrl.assignBadge);
 // Influencer ad posts

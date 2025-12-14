@@ -199,6 +199,10 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/AuthMobileLoginRequest"
+              },
+              "example": {
+                "phone": "8888888888",
+                "mpin": "123456"
               }
             }
           }
@@ -1061,6 +1065,47 @@
         }
       }
     },
+    "/api/admin/kyc": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "List influencer KYC by status",
+        "security": [ { "bearerAuth": [] } ],
+        "parameters": [ { "name": "status", "in": "query", "schema": { "type": "string" } } ],
+        "responses": { "200": { "description": "OK" } }
+      }
+    },
+    "/api/admin/kyc/{influencerId}": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "Get influencer KYC",
+        "security": [ { "bearerAuth": [] } ],
+        "parameters": [ { "name": "influencerId", "in": "path", "required": true, "schema": { "type": "integer" } } ],
+        "responses": { "200": { "description": "OK" }, "404": { "description": "Not found" } }
+      }
+    },
+    "/api/admin/kyc/{influencerId}/status": {
+      "put": {
+        "tags": ["Admin"],
+        "summary": "Set KYC status (verified/rejected/pending)",
+        "security": [ { "bearerAuth": [] } ],
+        "parameters": [ { "name": "influencerId", "in": "path", "required": true, "schema": { "type": "integer" } } ],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "properties": { "status": { "type": "string" }, "reason": { "type": "string" } }, "required": ["status"] } } } },
+        "responses": { "200": { "description": "OK" }, "404": { "description": "Not found" } }
+      }
+    },
+    
+    "/api/influencers/me/payment-methods/{id}": {
+      "delete": { "tags": ["Influencers"], "summary": "Delete my payment method", "security": [ { "bearerAuth": [] } ], "parameters": [ { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } } ], "responses": { "200": { "description": "OK" }, "404": { "description": "Not found" } } }
+    },
+    "/api/influencers/me/payment-methods/{id}/preferred": {
+      "put": { "tags": ["Influencers"], "summary": "Set preferred payment method", "security": [ { "bearerAuth": [] } ], "parameters": [ { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } } ], "responses": { "200": { "description": "OK" }, "404": { "description": "Not found" } } }
+    },
+    "/api/admin/payments": {
+      "get": { "tags": ["Admin"], "summary": "List payment methods", "security": [ { "bearerAuth": [] } ], "parameters": [ { "name": "status", "in": "query", "schema": { "type": "string" } } ], "responses": { "200": { "description": "OK" } } }
+    },
+    "/api/admin/payments/{id}/status": {
+      "put": { "tags": ["Admin"], "summary": "Set payment method status", "security": [ { "bearerAuth": [] } ], "parameters": [ { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } } ], "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "properties": { "status": { "type": "string" } }, "required": ["status"] } } } }, "responses": { "200": { "description": "OK" }, "404": { "description": "Not found" } } }
+    },
     "/api/influencers/me/payment-methods": {
       "get": {
         "tags": [
@@ -1674,7 +1719,12 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object"
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "niche": { "type": "string" },
+                  "city": { "type": "string" }
+                }
               }
             }
           }
@@ -1685,11 +1735,55 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/ProfilePack"
                 }
               }
             }
           }
+        }
+      }
+    },
+    "/api/profile-builder/generate-photos": {
+      "post": {
+        "tags": [
+          "Profile Builder"
+        ],
+        "summary": "Generate influencer photos (SEO-friendly)",
+        "security": [ { "bearerAuth": [] } ],
+        "requestBody": {
+          "required": false,
+          "content": { "application/json": { "schema": { "type": "object", "properties": { "prompt": { "type": "string" }, "count": { "type": "integer", "minimum": 1, "maximum": 4 } } } } }
+        },
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "object", "properties": { "images": { "type": "array", "items": { "type": "object", "properties": { "b64": { "type": "string", "description": "base64 PNG" } } } } } } } } },
+          "400": { "description": "OpenAI not configured" }
+        }
+      }
+    },
+    "/api/profile-builder/pack/{id}/photos": {
+      "post": {
+        "tags": [
+          "Profile Builder"
+        ],
+        "summary": "Add photo URL to profile pack (SEO)",
+        "security": [ { "bearerAuth": [] } ],
+        "parameters": [ { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "properties": { "imageUrl": { "type": "string" }, "title": { "type": "string" }, "caption": { "type": "string" }, "items": { "type": "array", "items": { "type": "object", "properties": { "imageUrl": { "type": "string" }, "title": { "type": "string" }, "caption": { "type": "string" } }, "required": ["imageUrl"] } } }, "oneOf": [ { "required": ["imageUrl"] }, { "required": ["items"] } ] } } }
+        },
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "object", "properties": { "ok": { "type": "boolean" }, "count": { "type": "integer" }, "images": { "type": "object" } } } } } },
+          "404": { "description": "Pack not found" }
+        }
+      },
+      "get": {
+        "tags": [ "Profile Builder" ],
+        "summary": "List pack photos",
+        "parameters": [ { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "object", "properties": { "avatar": { "type": "string", "nullable": true }, "gallery": { "type": "array", "items": { "type": "object", "properties": { "url": { "type": "string" }, "title": { "type": "string" }, "caption": { "type": "string" }, "alt": { "type": "string" }, "jsonLd": { "type": "object" } } } } } } } } },
+          "404": { "description": "Pack not found" }
         }
       }
     },
@@ -1716,11 +1810,12 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/ProfilePack"
                 }
               }
             }
-          }
+          },
+          "404": { "description": "Not found" }
         }
       }
     },
@@ -2742,6 +2837,20 @@
           }
         }
       },
+      "ProfilePack": {
+        "type": "object",
+        "properties": {
+          "packId": { "type": "string" },
+          "name": { "type": "string" },
+          "niche": { "type": "string" },
+          "city": { "type": "string" },
+          "shortBio": { "type": "string" },
+          "longBio": { "type": "string" },
+          "jsonLd": { "type": "object" },
+          "images": { "type": "object", "properties": { "avatar": { "type": "string", "nullable": true }, "gallery": { "type": "array", "items": { "type": "string" } } } },
+          "ai": { "type": "boolean" }
+        }
+      },
       "KycInput": {
         "type": "object",
         "properties": {
@@ -2749,11 +2858,13 @@
             "type": "string"
           },
           "dob": {
-            "type": "string"
+            "type": "string",
+            "description": "YYYY-MM-DD"
           },
           "pan": {
             "type": "string"
           },
+          "aadhaarNumber": { "type": "string", "description": "Will be hashed; last4 stored" },
           "addressLine1": {
             "type": "string"
           },
@@ -2775,9 +2886,28 @@
           "documents": {
             "type": "object"
           },
+          "photoUrl": { "type": "string" },
+          "panPhotoUrl": { "type": "string" },
+          "aadhaarPhotoUrl": { "type": "string" },
           "consent": {
             "type": "boolean"
           }
+        },
+        "example": {
+          "fullName": "Rukmini",
+          "dob": "2001-01-01",
+          "pan": "ABCDE1234F",
+          "aadhaarNumber": "123412341234",
+          "addressLine1": "Line 1",
+          "addressLine2": "Line 2",
+          "postalCode": "500089",
+          "city": "Nellore",
+          "state": "Andhra Pradesh",
+          "country": "India",
+          "photoUrl": "https://cdn.example.com/kyc/selfie.jpg",
+          "panPhotoUrl": "https://cdn.example.com/kyc/pan.jpg",
+          "aadhaarPhotoUrl": "https://cdn.example.com/kyc/aadhaar.jpg",
+          "consent": true
         }
       },
       "KycOutput": {
@@ -2832,35 +2962,22 @@
       },
       "PaymentMethodInput": {
         "type": "object",
-        "required": [
-          "type"
-        ],
         "properties": {
-          "type": {
-            "type": "string",
-            "enum": [
-              "bank",
-              "upi"
-            ]
-          },
-          "accountHolderName": {
-            "type": "string"
-          },
-          "bankName": {
-            "type": "string"
-          },
-          "bankIfsc": {
-            "type": "string"
-          },
-          "bankAccountNumber": {
-            "type": "string"
-          },
-          "upiId": {
-            "type": "string"
-          },
-          "isPreferred": {
-            "type": "boolean"
-          }
+          "type": { "type": "string", "enum": ["bank","upi"] },
+          "accountHolderName": { "type": "string" },
+          "bankName": { "type": "string" },
+          "bankIfsc": { "type": "string" },
+          "bankAccountNumber": { "type": "string" },
+          "upiId": { "type": "string" },
+          "isPreferred": { "type": "boolean" }
+        },
+        "example": {
+          "type": "bank",
+          "accountHolderName": "Rukmini",
+          "bankName": "SBI",
+          "bankIfsc": "SBIN0001234",
+          "bankAccountNumber": "123456789012",
+          "isPreferred": true
         }
       },
       "Post": {
