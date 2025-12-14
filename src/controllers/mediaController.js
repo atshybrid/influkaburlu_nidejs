@@ -1,4 +1,5 @@
 const { InfluencerAdMedia, Post, Influencer, Ad } = require('../models');
+const fs = require('fs');
 const { Op } = require('sequelize');
 
 // Public: list influencer ad media entries (canonical video records)
@@ -95,7 +96,8 @@ exports.upload = async (req, res) => {
 
     const id = crypto.randomUUID();
     const key = `uploads/${req.user.id}/${type}/${id}-${file.name}`;
-    const { url } = await uploadBuffer(key, file.data, file.mimetype);
+    const buffer = (file.data && file.data.length) ? file.data : await fs.promises.readFile(file.tempFilePath);
+    const { url } = await uploadBuffer(key, buffer, file.mimetype || 'application/octet-stream');
 
     res.json({ url, key, type, sizeMB: Number(sizeMB.toFixed(2)) });
   } catch (err) {
