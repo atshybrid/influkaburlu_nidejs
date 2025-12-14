@@ -1,4 +1,11 @@
-require('dotenv').config();
+try {
+  // Optional: Render/hosting environments often provide env vars directly.
+  // Don't crash the server if dotenv isn't installed.
+  require('dotenv').config();
+} catch (e) {
+  // eslint-disable-next-line no-console
+  console.warn('dotenv not available; continuing with process.env only');
+}
 const express = require('express');
 const cors = require('cors');
 const db = require('./src/models');

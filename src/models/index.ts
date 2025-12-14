@@ -1,5 +1,11 @@
 const path = require('path');
-require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
+try {
+	// Optional: production hosts (e.g., Render) typically inject env vars.
+	// Don't crash if dotenv isn't installed or .env isn't present.
+	require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
+} catch (e) {
+	// noop
+}
 const { Sequelize } = require('sequelize');
 
 const commonOpts = { 
