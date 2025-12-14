@@ -31,7 +31,9 @@ async function uploadBuffer(key, buffer, contentType) {
   });
   await s3.send(cmd);
   // Use public base URL when configured for direct file access
-  const url = `${R2_PUBLIC_BASE_URL}/${encodeURIComponent(key)}`;
+  // Use encodeURI to preserve path separators ('/') in the key, since
+  // Cloudflare R2 public URLs expect directory structure in the path.
+  const url = `${R2_PUBLIC_BASE_URL}/${encodeURI(key)}`;
   return { key, url };
 }
 
