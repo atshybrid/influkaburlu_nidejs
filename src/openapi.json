@@ -1446,6 +1446,7 @@
           "Influencers"
         ],
         "summary": "Upload Bunny video for own ad post",
+        "description": "Uploads a video file to Bunny Stream and attaches it to the influencer's ad post.\n\nImportant (Windows/PowerShell): use `curl.exe` and DO NOT manually set the `Content-Type: multipart/form-data` header (curl must include a boundary). Filenames containing `#` or spaces can also break shell commands; rename the file (e.g. `ad-video.mp4`) while testing.",
         "security": [
           {
             "bearerAuth": []
@@ -1484,6 +1485,11 @@
                 "required": [
                   "file"
                 ]
+              },
+              "example": {
+                "title": "My Ad Video",
+                "caption": "Short caption",
+                "category": "1"
               }
             }
           }
