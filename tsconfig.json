@@ -19,6 +19,7 @@
     "server.ts",
     "seed.ts",
     "src/**/*.ts",
+    "src/**/*.d.ts",
     "scripts/**/*.ts"
   ],
   "exclude": [
