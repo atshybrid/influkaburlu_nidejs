@@ -21,6 +21,7 @@ module.exports = (sequelize, DataTypes) => {
     profilePackUrl: { type: DataTypes.STRING },
     verificationStatus: { type: DataTypes.STRING, defaultValue: 'none' },
     badges: { type: DataTypes.JSONB, defaultValue: [] },
+    adPricing: { type: DataTypes.JSONB, defaultValue: {} },
     ulid: { type: DataTypes.STRING(26), allowNull: false, unique: true },
   }, {
     tableName: 'Influencers',

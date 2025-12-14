@@ -11,6 +11,7 @@ const media = require('./media');
 const brands = require('./brands');
 const uploads = require('./uploads');
 const discovery = require('./discovery');
+const categories = require('./categories');
 const bunnyCtrl = require('../controllers/bunnyController');
 const requireAuth = require('../middleware/auth');
 
@@ -25,6 +26,7 @@ router.use('/media', media);
 router.use('/brands', brands);
 router.use('/uploads', uploads);
 router.use('/discovery', discovery);
+router.use('/categories', categories);
 
 // Bunny admin/public
 router.get('/admin/bunny/videos', requireAuth(['admin']), bunnyCtrl.adminListVideos);
