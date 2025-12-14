@@ -40,6 +40,9 @@ const Category = require('./category')(sequelize, Sequelize.DataTypes);
 const OtpRequest = require('./otpRequest')(sequelize, Sequelize.DataTypes);
 const RefreshToken = require('./refreshToken')(sequelize, Sequelize.DataTypes);
 const InfluencerAdMedia = require('./influencerAdMedia')(sequelize, Sequelize.DataTypes);
+const InfluencerPricing = require('./influencerPricing')(sequelize, Sequelize.DataTypes);
+const InfluencerKyc = require('./influencerKyc')(sequelize, Sequelize.DataTypes);
+const InfluencerPaymentMethod = require('./influencerPaymentMethod')(sequelize, Sequelize.DataTypes);
 const { Country, State, District } = require('./location')(sequelize, Sequelize.DataTypes);
 const { Role, UserRole } = require('./role')(sequelize, Sequelize.DataTypes);
 
@@ -64,6 +67,38 @@ async function ensureInfluencerBadgeColumns() {
 }
 
 ensureInfluencerBadgeColumns().catch(() => {});
+
+async function ensureInfluencerAdPricingColumn() {
+	const qi = sequelize.getQueryInterface();
+	try {
+		await sequelize.query(`ALTER TABLE "Influencers" ADD COLUMN IF NOT EXISTS "adPricing" JSONB DEFAULT '{}'::jsonb`);
+	} catch (e) {
+		try {
+			const table = await qi.describeTable('Influencers');
+			if (!table.adPricing) {
+				await qi.addColumn('Influencers', 'adPricing', { type: Sequelize.DataTypes.JSONB, defaultValue: {} });
+			}
+		} catch (_) {}
+	}
+}
+
+ensureInfluencerAdPricingColumn().catch(() => {});
+
+async function ensureInfluencerProfilePicColumn() {
+	const qi = sequelize.getQueryInterface();
+	try {
+		await sequelize.query('ALTER TABLE "Influencers" ADD COLUMN IF NOT EXISTS "profilePicUrl" VARCHAR(512)');
+	} catch (e) {
+		try {
+			const table = await qi.describeTable('Influencers');
+			if (!table.profilePicUrl) {
+				await qi.addColumn('Influencers', 'profilePicUrl', { type: Sequelize.DataTypes.STRING });
+			}
+		} catch (_) {}
+	}
+}
+
+ensureInfluencerProfilePicColumn().catch(() => {});
 
 async function ensureInfluencerAdMediaTable() {
 	const qi = sequelize.getQueryInterface();
@@ -91,6 +126,75 @@ async function ensureInfluencerAdMediaTable() {
 }
 
 ensureInfluencerAdMediaTable().catch(() => {});
+async function ensureInfluencerKycTable() {
+	const qi = sequelize.getQueryInterface();
+	try { await qi.describeTable('InfluencerKyc'); }
+	catch (e) {
+		await qi.createTable('InfluencerKyc', {
+			id: { type: Sequelize.DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+			influencerId: { type: Sequelize.DataTypes.INTEGER, allowNull: false },
+			fullName: { type: Sequelize.DataTypes.STRING },
+			dob: { type: Sequelize.DataTypes.DATEONLY },
+			pan: { type: Sequelize.DataTypes.STRING },
+			addressLine1: { type: Sequelize.DataTypes.STRING },
+			addressLine2: { type: Sequelize.DataTypes.STRING },
+			postalCode: { type: Sequelize.DataTypes.STRING },
+			city: { type: Sequelize.DataTypes.STRING },
+			state: { type: Sequelize.DataTypes.STRING },
+			country: { type: Sequelize.DataTypes.STRING },
+			status: { type: Sequelize.DataTypes.STRING, defaultValue: 'pending' },
+			verifiedAt: { type: Sequelize.DataTypes.DATE },
+			documents: { type: Sequelize.DataTypes.JSONB, defaultValue: {} },
+			consentTs: { type: Sequelize.DataTypes.DATE },
+			ulid: { type: Sequelize.DataTypes.STRING(26), allowNull: false, unique: true },
+			createdAt: { type: Sequelize.DataTypes.DATE, allowNull: false, defaultValue: Sequelize.fn('NOW') },
+			updatedAt: { type: Sequelize.DataTypes.DATE, allowNull: false, defaultValue: Sequelize.fn('NOW') },
+		});
+	}
+}
+
+async function ensureInfluencerPaymentMethodTable() {
+	const qi = sequelize.getQueryInterface();
+	try { await qi.describeTable('InfluencerPaymentMethod'); }
+	catch (e) {
+		await qi.createTable('InfluencerPaymentMethod', {
+			id: { type: Sequelize.DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+			influencerId: { type: Sequelize.DataTypes.INTEGER, allowNull: false },
+			type: { type: Sequelize.DataTypes.STRING, allowNull: false, defaultValue: 'bank' },
+			isPreferred: { type: Sequelize.DataTypes.BOOLEAN, defaultValue: false },
+			status: { type: Sequelize.DataTypes.STRING, defaultValue: 'unverified' },
+			accountHolderName: { type: Sequelize.DataTypes.STRING },
+			bankName: { type: Sequelize.DataTypes.STRING },
+			bankIfsc: { type: Sequelize.DataTypes.STRING },
+			bankAccountNumber: { type: Sequelize.DataTypes.STRING },
+			upiId: { type: Sequelize.DataTypes.STRING },
+			ulid: { type: Sequelize.DataTypes.STRING(26), allowNull: false, unique: true },
+			createdAt: { type: Sequelize.DataTypes.DATE, allowNull: false, defaultValue: Sequelize.fn('NOW') },
+			updatedAt: { type: Sequelize.DataTypes.DATE, allowNull: false, defaultValue: Sequelize.fn('NOW') },
+		});
+	}
+}
+
+ensureInfluencerKycTable().catch(() => {});
+ensureInfluencerPaymentMethodTable().catch(() => {});
+
+async function ensureInfluencerPricingTable() {
+	const qi = sequelize.getQueryInterface();
+	try {
+		await qi.describeTable('InfluencerPricing');
+	} catch (e) {
+		await qi.createTable('InfluencerPricing', {
+			id: { type: Sequelize.DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+			influencerId: { type: Sequelize.DataTypes.INTEGER, allowNull: false },
+			adPricing: { type: Sequelize.DataTypes.JSONB, defaultValue: {} },
+			ulid: { type: Sequelize.DataTypes.STRING(26), allowNull: false, unique: true },
+			createdAt: { type: Sequelize.DataTypes.DATE, allowNull: false, defaultValue: Sequelize.fn('NOW') },
+			updatedAt: { type: Sequelize.DataTypes.DATE, allowNull: false, defaultValue: Sequelize.fn('NOW') },
+		});
+	}
+}
+
+ensureInfluencerPricingTable().catch(() => {});
 
 User.hasOne(Influencer, { foreignKey: 'userId' });
 Influencer.belongsTo(User, { foreignKey: 'userId' });
@@ -134,7 +238,17 @@ InfluencerAdMedia.belongsTo(Influencer, { foreignKey: 'influencerId' });
 Ad.hasMany(InfluencerAdMedia, { foreignKey: 'adId' });
 InfluencerAdMedia.belongsTo(Ad, { foreignKey: 'adId' });
 
-module.exports = { sequelize, User, Influencer, Brand, Ad, Application, Payout, OtpRequest, RefreshToken, Post, InfluencerAdMedia };
+// Pricing association
+Influencer.hasOne(InfluencerPricing, { foreignKey: 'influencerId' });
+InfluencerPricing.belongsTo(Influencer, { foreignKey: 'influencerId' });
+
+// KYC and Payment associations
+Influencer.hasOne(InfluencerKyc, { foreignKey: 'influencerId' });
+InfluencerKyc.belongsTo(Influencer, { foreignKey: 'influencerId' });
+Influencer.hasMany(InfluencerPaymentMethod, { foreignKey: 'influencerId' });
+InfluencerPaymentMethod.belongsTo(Influencer, { foreignKey: 'influencerId' });
+
+module.exports = { sequelize, User, Influencer, Brand, Ad, Application, Payout, OtpRequest, RefreshToken, Post, InfluencerAdMedia, InfluencerPricing, InfluencerKyc, InfluencerPaymentMethod };
 module.exports.Language = Language;
 module.exports.Category = Category;
 module.exports.InfluencerCategory = InfluencerCategory;

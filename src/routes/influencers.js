@@ -12,6 +12,17 @@ const upload = multer({ storage, limits: { fileSize: (parseInt(process.env.MEDIA
 router.get('/me', auth(), ctrl.me);
 router.put('/me', auth(['influencer']), ctrl.update);
 router.get('/dashboard', auth(['influencer']), ctrl.dashboard);
+// Update profile picture (multipart or JSON imageUrl)
+router.put('/me/profile-pic', auth(['influencer']), ctrl.updateProfilePic);
+// Pricing (get/update)
+router.get('/me/pricing', auth(['influencer']), ctrl.getPricing);
+router.put('/me/pricing', auth(['influencer']), ctrl.updatePricing);
+router.post('/me/pricing', auth(['influencer']), ctrl.updatePricing);
+// KYC and payment methods
+router.get('/me/kyc', auth(['influencer']), require('../controllers/kycController').getMe);
+router.put('/me/kyc', auth(['influencer']), require('../controllers/kycController').updateMe);
+router.get('/me/payment-methods', auth(['influencer']), require('../controllers/paymentController').listMe);
+router.put('/me/payment-methods', auth(['influencer']), require('../controllers/paymentController').upsertMe);
 // Admin badge assignment
 router.put('/:id/badges', auth(['admin']), ctrl.assignBadge);
 // Influencer ad posts

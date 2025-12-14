@@ -8,7 +8,9 @@
     "seed": "node seed.js",
     "build": "echo Building kaburlu-backend-v2 (no compile step)",
     "backfill:media": "node src/scripts/backfillInfluencerAdMedia.js",
-    "update:media-status": "node src/scripts/updateInfluencerAdMediaStatus.js"
+    "update:media-status": "node src/scripts/updateInfluencerAdMediaStatus.js",
+    "backfill:ad-pricing": "node src/scripts/backfillAdPricing.js",
+    "backfill:pricing-table": "node src/scripts/backfillInfluencerPricing.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.948.0",

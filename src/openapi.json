@@ -1,867 +1,794 @@
 {
   "openapi": "3.0.3",
-  "info": { "title": "Kaburlu Backend API", "version": "1.0.0" },
+  "info": {
+    "title": "Kaburlu Backend API",
+    "version": "1.0.0"
+  },
   "servers": [
-    { "url": "http://localhost:4000", "description": "Local development" },
-    { "url": "https://influapi.kaburlumedia.com", "description": "Production" }
+    {
+      "url": "http://localhost:4000"
+    },
+    {
+      "url": "https://influapi.kaburlumedia.com"
+    }
   ],
   "tags": [
-    { "name": "Public", "description": "Publicly accessible endpoints (no auth)" },
-    { "name": "Auth", "description": "User registration and login" },
-    { "name": "Influencers", "description": "Influencer profile and data" },
-    { "name": "Brands", "description": "Brand dashboards and tools" },
-    { "name": "Ads", "description": "Brand ad postings and listings" },
-    { "name": "Applications", "description": "Applying to ads and deliverables" },
-    { "name": "Profile Builder", "description": "AI-generated influencer profile packs" },
-    { "name": "Media", "description": "Media uploads to Cloudflare R2" },
-    { "name": "Posts", "description": "Influencer ad posts and feeds" },
-    { "name": "Uploads", "description": "Signed uploads for R2 and Bunny Stream" },
-    { "name": "Discovery", "description": "Brand search for influencers" },
-    { "name": "Locations", "description": "Country, state, district lookup" }
-  ],
-  "components": {
-    "securitySchemes": {
-      "bearerAuth": { "type": "http", "scheme": "bearer", "bearerFormat": "JWT" }
+    {
+      "name": "Health"
     },
-    "schemas": {
-      "CreatePost": {
-        "type": "object",
-        "properties": {
-          "type": { "type": "string", "enum": ["ad","external","portfolio"], "default": "external" },
-          "caption": { "type": "string" },
-          "media": { "type": "array", "items": { "$ref": "#/components/schemas/MediaEntry" } },
-          "categories": { "type": "array", "items": { "type": "string" } },
-          "language": { "type": "string" },
-          "states": { "type": "array", "items": { "type": "string" } },
-          "adId": { "type": "integer" }
-        },
-        "required": ["type"]
-      },
-      "SignR2UploadRequest": {
-        "type": "object",
-        "properties": { "fileName": {"type":"string"}, "contentType": {"type":"string"} },
-        "required": ["fileName","contentType"]
-      },
-      "SignR2UploadResponse": {
-        "type": "object",
-        "properties": { "uploadUrl": {"type":"string"}, "publicUrl": {"type":"string"}, "key": {"type":"string"} }
-      },
-      "BunnyCreateResponse": {
-        "type": "object",
-        "properties": { "guid": {"type":"string"}, "uploadUrl": {"type":"string"}, "playbackUrl": {"type":"string"} }
-      },
-      "DiscoveryInfluencer": {
-        "type": "object",
-        "properties": {
-          "id": { "type": "integer" },
-          "idUlid": { "type": "string" },
-          "handle": { "type": "string" },
-          "languages": { "type": "array", "items": { "type": "string" } },
-          "states": { "type": "array", "items": { "type": "string" } },
-          "categories": { "type": "array", "items": { "type": "string" } },
-          "pricing": { "type": "object" },
-          "score": { "type": "number" }
-        }
-      },
-      "Post": {
-        "type": "object",
-        "properties": {
-          "id": { "type": "integer" },
-          "idUlid": { "type": "string" },
-          "userId": { "type": "integer" },
-          "influencerId": { "type": "integer" },
-          "adId": { "type": "integer" },
-          "type": { "type": "string" },
-          "caption": { "type": "string" },
-          "categories": { "type": "array", "items": { "type": "string" } },
-          "language": { "type": "string" },
-          "states": { "type": "array", "items": { "type": "string" } },
-          "media": { "type": "array", "items": { "$ref": "#/components/schemas/MediaEntry" } },
-          "metrics": { "type": "object" }
-        }
-      },
-      "MediaEntry": {
-        "type": "object",
-        "properties": {
-          "type": { "type": "string", "enum": ["image","video"] },
-          "url": { "type": "string" },
-          "provider": { "type": "string" },
-          "guid": { "type": "string" },
-          "uploadUrl": { "type": "string" },
-          "playbackUrl": { "type": "string" }
-        }
-      },
-      "Influencer": {
-        "type": "object",
-        "properties": {
-          "id": { "type": "integer" },
-          "userId": { "type": "integer" },
-          "handle": { "type": "string" },
-          "profilePicUrl": { "type": "string" },
-          "posts": { "type": "array", "items": { "type": "string" } },
-          "rateCards": { "type": "array", "items": { "type": "object" } },
-          "availability": { "type": "array", "items": { "type": "object" } },
-          "adPricing": {
-            "type": "object",
-            "description": "Advanced ad-wise pricing matrix with platform + deliverable types and add-ons",
-            "properties": {
-              "instagramPost": { "type": "number", "example": 5000 },
-              "instagramStory": { "type": "number", "example": 2500 },
-              "instagramReel": { "type": "number", "example": 8000 },
-              "instagramCarousel": { "type": "number", "example": 9000 },
-              "instagramLive": { "type": "number", "example": 12000 },
-              "youtubeShort": { "type": "number", "example": 10000 },
-              "youtubeIntegration": { "type": "number", "example": 25000 },
-              "youtubeDedicated": { "type": "number", "example": 40000 },
-              "tiktokVideo": { "type": "number", "example": 7000 },
-              "facebookPost": { "type": "number", "example": 3500 },
-              "twitterPost": { "type": "number", "example": 3000 },
-              "blogPost": { "type": "number", "example": 15000 },
-              "ugcVideoRaw": { "type": "number", "example": 6000, "description": "UGC raw footage without editing" },
-              "ugcVideoEdited": { "type": "number", "example": 9000, "description": "UGC edited and delivered" },
-              "storySet3": { "type": "number", "example": 6000, "description": "3-story set pricing" },
-              "bundleInstagramReelStory": { "type": "number", "example": 12000, "description": "Bundle price for Reel + 1 Story" },
-              "whitelistedUsage30d": { "type": "number", "example": 5000, "description": "Ad usage/whitelisting 30 days" },
-              "whitelistedUsage90d": { "type": "number", "example": 12000, "description": "Ad usage/whitelisting 90 days" },
-              "exclusiveCategory": { "type": "number", "example": 8000, "description": "Category exclusivity add-on" },
-              "travelAllowancePerDay": { "type": "number", "example": 2000 },
-              "negotiable": { "type": "boolean", "example": true },
-              "currency": { "type": "string", "example": "INR" },
-              "notes": { "type": "string", "example": "Rates vary by script complexity and timeline." }
-            },
-            "examples": {
-              "Full matrix": {
-                "value": {
-                  "instagramPost": 5000,
-                  "instagramStory": 2500,
-                  "instagramReel": 8000,
-                  "instagramCarousel": 9000,
-                  "instagramLive": 12000,
-                  "youtubeShort": 10000,
-                  "youtubeIntegration": 25000,
-                  "youtubeDedicated": 40000,
-                  "tiktokVideo": 7000,
-                  "facebookPost": 3500,
-                  "twitterPost": 3000,
-                  "blogPost": 15000,
-                  "ugcVideoRaw": 6000,
-                  "ugcVideoEdited": 9000,
-                  "storySet3": 6000,
-                  "bundleInstagramReelStory": 12000,
-                  "whitelistedUsage30d": 5000,
-                  "whitelistedUsage90d": 12000,
-                  "exclusiveCategory": 8000,
-                  "travelAllowancePerDay": 2000,
-                  "negotiable": true,
-                  "currency": "INR",
-                  "notes": "Rates vary by script complexity and timeline."
-                }
-              },
-              "Minimal": { "value": { "instagramPost": 6000, "negotiable": true } }
-            }
-          },
-          "countryId": { "type": "integer" },
-          "stateId": { "type": "integer" },
-          "stateIds": { "type": "array", "items": { "type": "integer" } },
-          "districtId": { "type": "integer" },
-          "addressLine1": { "type": "string" },
-          "addressLine2": { "type": "string" },
-          "postalCode": { "type": "string" },
-          "states": { "type": "array", "items": { "type": "string" } },
-          "languages": { "type": "array", "items": { "type": "string" } },
-          "socialLinks": { "type": "object" },
-          "followers": { "type": "object" },
-          "bio": { "type": "string" },
-          "profilePackUrl": { "type": "string" }
-          ,
-          "verificationStatus": { "type": "string", "enum": ["none", "green-tick", "silver", "gold"], "example": "green-tick" },
-          "badges": { "type": "array", "items": { "type": "string" }, "example": ["top-creator", "verified"] }
-        }
-      },
-      "Ad": {
-        "type": "object",
-        "properties": {
-          "id": { "type": "integer", "example": 101 },
-          "brandId": { "type": "integer", "example": 12 },
-          "title": { "type": "string", "example": "Regional food promotion" },
-          "description": { "type": "string", "example": "Promote our new product in Telangana" },
-          "targetStates": { "type": "array", "items": { "type": "string" }, "example": ["Telangana"] },
-          "language": { "type": "string", "example": "Telugu" },
-          "payPerInfluencer": { "type": "number", "example": 8000 },
-          "status": { "type": "string", "example": "open" },
-          "createdAt": { "type": "string", "format": "date-time" }
-        }
-      },
-      
-      "Application": {
-        "type": "object",
-        "properties": {
-          "id": { "type": "integer", "example": 5001 },
-          "adId": { "type": "integer", "example": 101 },
-          "influencerId": { "type": "integer", "example": 3 },
-          "state": { "type": "string", "example": "Telangana" },
-          "applyMessage": { "type": "string", "example": "Excited to collaborate!" },
-          "status": { "type": "string", "example": "applied" },
-          "submission": { "type": "object", "example": { "creativeUrl": "https://pub-.../uploads/3/video/uuid.mp4", "submittedAt": "2025-12-10T10:00:00Z" } }
-        }
-      },
-
-      "Payout": {
-        "type": "object",
-        "properties": {
-          "id": { "type": "integer", "example": 9001 },
-          "influencerId": { "type": "integer", "example": 3 },
-          "grossAmount": { "type": "number", "example": 8000 },
-          "commission": { "type": "number", "example": 1600 },
-          "netAmount": { "type": "number", "example": 6400 },
-          "state": { "type": "string", "example": "Telangana" },
-          "status": { "type": "string", "example": "completed" }
-        }
-      }
+    {
+      "name": "Auth"
+    },
+    {
+      "name": "Ads"
+    },
+    {
+      "name": "Applications"
+    },
+    {
+      "name": "Influencers"
+    },
+    {
+      "name": "Posts"
+    },
+    {
+      "name": "Profile Builder"
+    },
+    {
+      "name": "Locations"
+    },
+    {
+      "name": "Media"
+    },
+    {
+      "name": "Brands"
+    },
+    {
+      "name": "Uploads"
+    },
+    {
+      "name": "Discovery"
+    },
+    {
+      "name": "Categories"
+    },
+    {
+      "name": "Bunny"
     }
-  },
-  "security": [ { "bearerAuth": [] } ],
+  ],
   "paths": {
-    "/api/ads/feed": {
-      "post": {
-        "tags": ["Public","Ads"],
-        "summary": "Public ads feed with filters",
-        "security": [],
-        "requestBody": { "required": false, "content": { "application/json": { "schema": { "type": "object", "properties": {
-          "language": { "type": "string" },
-          "states": { "type": "array", "items": { "type": "string" } },
-          "categories": { "type": "array", "items": { "type": "string" } },
-          "adTypes": { "type": "array", "items": { "type": "string" }, "description": "e.g. reel, post, story, shoot_onlocation, voiceover" },
-          "budget": { "type": "object", "properties": { "min": { "type": "number" }, "max": { "type": "number" } } },
-          "brandIdUlid": { "type": "string" },
-          "status": { "type": "array", "items": { "type": "string" }, "default": ["open"] },
-          "page": { "type": "integer", "default": 1 },
-          "limit": { "type": "integer", "default": 20 },
-          "expand": { "type": "array", "items": { "type": "string" } }
-        } } } } },
-        "responses": { "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "array", "items": { "type": "object", "properties": {
-          "idUlid": { "type": "string" },
-          "title": { "type": "string" },
-          "language": { "type": "string" },
-          "targetStates": { "type": "array", "items": { "type": "string" } },
-          "adTypes": { "type": "array", "items": { "type": "string" } },
-          "payPerInfluencer": { "type": "number" },
-          "budget": { "type": "number" },
-          "deadline": { "type": "string", "format": "date-time" },
-          "status": { "type": "string" }
-        } } } } } } }
-      }
-    },
-    "/api/discovery/influencers/search": {
-      "post": {
-        "tags": ["Discovery"],
-        "summary": "Discover influencers (filtered)",
-        "security": [{"bearerAuth":[]}],
-        "requestBody": { "required": false, "content": { "application/json": { "schema": { "type": "object", "properties": {
-          "language": { "type": "string" },
-          "states": { "type": "array", "items": { "type": "string" } },
-          "categories": { "type": "array", "items": { "type": "string" } },
-          "adTypes": { "type": "array", "items": { "type": "string" } },
-          "budget": { "type": "object", "properties": { "min": { "type": "number" }, "max": { "type": "number" } } },
-          "reach": { "type": "object", "properties": { "min": { "type": "number" }, "max": { "type": "number" } } },
-          "engagementMin": { "type": "number" },
-          "page": { "type": "integer", "default": 1 },
-          "limit": { "type": "integer", "default": 20 },
-          "sort": { "type": "string", "enum": ["score","followers","pricing"], "default": "score" },
-          "order": { "type": "string", "enum": ["asc","desc"], "default": "desc" }
-        } } } } },
-        "responses": { "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/DiscoveryInfluencer" } } } } } }
-      }
-    },
-    "/api/posts": {
-      "post": {
-        "tags": ["Posts"],
-        "summary": "Create influencer ad-style post",
-        "security": [{"bearerAuth":[]}],
-        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CreatePost" } } } },
-        "responses": { "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Post" } } } } }
-      }
-    },
-    "/api/posts/feed": {
+    "/health": {
       "get": {
-        "tags": ["Public","Posts"],
-        "summary": "List posts (feed)",
-        "security": [],
-        "parameters": [
-          {"name":"category","in":"query","schema":{"type":"string"}},
-          {"name":"state","in":"query","schema":{"type":"string"}},
-          {"name":"language","in":"query","schema":{"type":"string"}},
-          {"name":"type","in":"query","schema":{"type":"string","enum":["ad","external","portfolio"]}},
-          {"name":"page","in":"query","schema":{"type":"integer","default":1}},
-          {"name":"limit","in":"query","schema":{"type":"integer","default":20}},
-          {"name":"cursor","in":"query","schema":{"type":"string"},"description":"Opaque base64 cursor returned from previous call"},
-          {"name":"status","in":"query","schema":{"type":"string","enum":["any","ready"],"default":"any"},"description":"Filter by video readiness"},
-          {"name":"fields","in":"query","schema":{"type":"string"},"description":"Comma list: e.g. videos,metrics"}
+        "tags": [
+          "Health"
         ],
-        "responses": { "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "object", "properties": {
-          "items": { "type": "array", "items": { "allOf": [ { "$ref": "#/components/schemas/Post" }, { "type": "object", "properties": { "videoUrl": {"type":"string"}, "videoGuid": {"type":"string"}, "videoStatus": {"type":"string"}, "videoProvider": {"type":"string"}, "videoThumbnailUrl": {"type":"string"}, "videos": { "type": "array", "items": { "type": "object", "properties": { "guid": {"type":"string"}, "url": {"type":"string"}, "status": {"type":"string"}, "provider": {"type":"string"}, "thumbnailUrl": {"type":"string"}, "sizeBytes": {"type":"integer"}, "createdAt": {"type":"string","format":"date-time"} } } } } } ] } },
-          "nextCursor": { "type": "string" },
-          "prefetch": { "type": "object", "properties": { "videoUrl": { "type": "string" } } }
-        } } } } } }
-      }
-    },
-    "/api/posts/{idUlid}": {
-      "get": { "tags": ["Posts"], "summary": "Get post by ULID", "parameters": [{"name":"idUlid","in":"path","required":true,"schema":{"type":"string"}}],
-        "responses": { "200": { "description":"OK", "content":{"application/json":{"schema":{"$ref":"#/components/schemas/Post"}}} } } }
-    },
-    "/api/posts/{idUlid}/video": {
-      "post": { "tags": ["Posts"], "summary": "Create Bunny Stream video for post", "security": [{"bearerAuth":[]}], "parameters": [{"name":"idUlid","in":"path","required":true,"schema":{"type":"string"}}],
-        "requestBody": { "required": false, "content": { "application/json": { "schema": { "type":"object", "properties": { "title": {"type":"string"} } } } } },
-        "responses": { "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/BunnyCreateResponse" } } } } }
-      }
-    },
-    "/api/uploads/r2/sign": {
-      "post": { "tags": ["Uploads"], "summary": "Sign R2 image/file upload", "security": [{"bearerAuth":[]}],
-        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SignR2UploadRequest" } } } },
-        "responses": { "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SignR2UploadResponse" } } } } }
-      }
-    },
-    "/api/uploads/bunny/video": {
-      "post": { "tags": ["Uploads"], "summary": "Create Bunny Stream video (library entry)", "security": [{"bearerAuth":[]}],
-        "requestBody": { "required": false, "content": { "application/json": { "schema": { "type":"object", "properties": { "title": {"type":"string"} } } } } },
-        "responses": { "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/BunnyCreateResponse" } } } } }
-      }
-    },
-    "/api/influencers/{id}/ads": {
-      "post": { "tags": ["Influencers"], "summary": "Create influencer ad post", "security": [{"bearerAuth":[]}], "parameters": [{"name":"id","in":"path","required":true,"schema":{"type":"integer"}}],
-        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CreatePost" } } } },
-        "responses": { "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Post" } } } } }
-      }
-    },
-    "/api/influencers/me/ads/video": {
-      "post": { "tags": ["Influencers"], "summary": "Upload Bunny video for own ad post (JWT)", "security": [{"bearerAuth":[]}],
-        "requestBody": { "required": false, "content": {
-          "multipart/form-data": { "schema": { "type":"object", "properties": {
-            "file": { "type": "string", "format": "binary" },
-            "title": {"type":"string"},
-            "description": {"type":"string"},
-            "caption": {"type":"string"},
-            "thumbnailUrl": {"type":"string"},
-            "postUlid": {"type":"string","description":"Target a specific ad post ULID (optional)"},
-            "category": {"type":"string","description":"Category id or code"},
-            "categoryCode": {"type":"string","description":"Alternative category code"}
-          } } },
-          "application/json": { "schema": { "type":"object", "properties": { "title": {"type":"string"}, "description": {"type":"string"}, "caption": {"type":"string"}, "thumbnailUrl": {"type":"string"}, "postUlid": {"type":"string"}, "category": {"type":"string"}, "categoryCode": {"type":"string"} } } }
-        } },
-        "responses": {
-          "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "object", "properties": { "guid": {"type":"string"}, "uploadUrl": {"type":"string"}, "playbackUrl": {"type":"string"}, "postIdUlid": {"type":"string"}, "uploaded": {"type":"boolean"}, "size": {"type":"integer"}, "metaApplied": {"type":"boolean"}, "bunnyMetaUpdated": {"type":"boolean"} } }, "example": { "guid": "uuid-guid", "uploadUrl": "https://video.bunnycdn.com/...", "playbackUrl": "https://iframe.mediadelivery.net/embed/562121/uuid-guid", "postIdUlid": "01HF3Z...", "uploaded": true, "size": 12345678, "metaApplied": true, "bunnyMetaUpdated": true } } } },
-          "201": { "description": "Created (new ad post)", "content": { "application/json": { "schema": { "type": "object", "properties": { "guid": {"type":"string"}, "uploadUrl": {"type":"string"}, "playbackUrl": {"type":"string"}, "postIdUlid": {"type":"string"}, "uploaded": {"type":"boolean"}, "size": {"type":"integer"}, "metaApplied": {"type":"boolean"}, "bunnyMetaUpdated": {"type":"boolean"} } }, "example": { "guid": "uuid-guid", "uploadUrl": "https://video.bunnycdn.com/...", "playbackUrl": "https://iframe.mediadelivery.net/embed/562121/uuid-guid", "postIdUlid": "01HF3Z...", "uploaded": true, "size": 12345678, "metaApplied": true, "bunnyMetaUpdated": true } } } }
-        }
-      }
-    },
-    "/api/admin/bunny/videos": {
-      "get": { "tags": ["Uploads"], "summary": "Admin: List Bunny videos", "security": [{"bearerAuth":[]}],
-        "parameters": [
-          {"name":"page","in":"query","schema":{"type":"integer","default":1}},
-          {"name":"perPage","in":"query","schema":{"type":"integer","default":20}},
-          {"name":"search","in":"query","schema":{"type":"string"}}
-        ],
-        "responses": { "200": { "description": "OK", "content": { "application/json": { "schema": { "type":"object","properties": { "page":{"type":"integer"},"perPage":{"type":"integer"},"total":{"type":"integer"},"items":{"type":"array","items":{"type":"object","properties":{"guid":{"type":"string"},"title":{"type":"string"},"length":{"type":"number"},"size":{"type":"number"},"status":{"type":"string"},"thumbnailUrl":{"type":"string"},"createdAt":{"type":"string"}}}} } } } } } }
-      }
-    },
-    "/api/admin/bunny/media/status-counts": {
-      "get": {
-        "tags": ["Uploads"],
-        "summary": "Admin: InfluencerAdMedia status counts",
-        "security": [{ "bearerAuth": [] }],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": { "type": "object", "properties": { "counts": { "type": "object", "additionalProperties": { "type": "integer" } } } },
-                "example": { "counts": { "ready": 2, "processing": 1, "uploaded": 3 } }
-              }
-            }
-          },
-          "401": { "description": "Unauthorized" }
-        }
-      }
-    },
-    "/api/posts/{idUlid}/playback": {
-      "get": { "tags": ["Public","Posts"], "summary": "Public: Get post playback info", "parameters": [{"name":"idUlid","in":"path","required":true,"schema":{"type":"string"}}],
-        "security": [],
-        "responses": { "200": { "description":"OK", "content": { "application/json": { "schema": { "type":"object","properties": { "provider":{"type":"string"}, "guid":{"type":"string"}, "playbackUrl":{"type":"string"}, "title":{"type":"string"}, "caption":{"type":"string"}, "thumbnailUrl":{"type":"string"} } }, "example": { "provider":"bunny","guid":"uuid-guid","playbackUrl":"https://iframe.mediadelivery.net/embed/562121/uuid-guid","title":"OPPO Ads","caption":"Launching today!","thumbnailUrl":"https://pub-.../oppo.jpg" } } } } , "404": { "description": "Not found" } }
-      }
-    },
-    "/api/bunny/videos/{guid}/status": {
-      "get": { "tags": ["Public","Uploads"], "summary": "Bunny video status (proxy)", "parameters": [{"name":"guid","in":"path","required":true,"schema":{"type":"string"}}],
-        "security": [],
-        "responses": { "200": { "description":"OK", "content": { "application/json": { "schema": { "type":"object","properties": { "guid":{"type":"string"}, "title":{"type":"string"}, "length":{"type":"number"}, "size":{"type":"number"}, "status":{"type":"string"}, "createdAt":{"type":"string"} } } } } } }
-      }
-    },
-    "/api/influencers/{id}/feed": {
-      "get": { "tags": ["Influencers"], "summary": "Influencer feed", "parameters": [
-          {"name":"id","in":"path","required":true,"schema":{"type":"integer"}},
-          {"name":"category","in":"query","schema":{"type":"string"}},
-          {"name":"state","in":"query","schema":{"type":"string"}},
-          {"name":"language","in":"query","schema":{"type":"string"}},
-          {"name":"page","in":"query","schema":{"type":"integer","default":1}},
-          {"name":"limit","in":"query","schema":{"type":"integer","default":20}}
-        ], "responses": { "200": { "description":"OK", "content":{"application/json":{"schema":{"type":"array","items":{"$ref":"#/components/schemas/Post"}}}} } }
-      }
-    },
-    "/api/influencers/ads": {
-      "get": {
-        "tags": ["Public","Influencers"],
-        "summary": "Public: All influencer ad posts",
-        "security": [],
-        "parameters": [
-          {"name":"state","in":"query","schema":{"type":"string"}},
-          {"name":"language","in":"query","schema":{"type":"string"}},
-          {"name":"category","in":"query","schema":{"type":"string"}},
-          {"name":"page","in":"query","schema":{"type":"integer","default":1}},
-          {"name":"limit","in":"query","schema":{"type":"integer","default":20}}
-        ],
-        "responses": { "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Post" } } } } } }
-      }
-    },
-    "/api/influencers/ads/media": {
-      "get": {
-        "tags": ["Public","Influencers"],
-        "summary": "Public: Influencer ad media (videos)",
-        "security": [],
-        "parameters": [
-          {"name":"status","in":"query","schema":{"type":"string","enum":["created","uploaded","processing","ready"]}},
-          {"name":"influencerUlid","in":"query","schema":{"type":"string"}},
-          {"name":"postUlid","in":"query","schema":{"type":"string"}},
-          {"name":"adUlid","in":"query","schema":{"type":"string"}},
-          {"name":"language","in":"query","schema":{"type":"string"}},
-          {"name":"state","in":"query","schema":{"type":"string"}},
-          {"name":"category","in":"query","schema":{"type":"string"}},
-          {"name":"page","in":"query","schema":{"type":"integer","default":1}},
-          {"name":"limit","in":"query","schema":{"type":"integer","default":20}}
-        ],
-        "responses": { "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "array", "items": { "type":"object", "properties": {
-          "ulid": {"type":"string"}, "guid": {"type":"string"}, "provider": {"type":"string"}, "playbackUrl": {"type":"string"}, "thumbnailUrl": {"type":"string"}, "status": {"type":"string"}, "sizeBytes": {"type":"integer"}, "durationSec": {"type":"integer"}, "meta": {"type":"object"},
-          "post": {"type":"object","properties": { "ulid": {"type":"string"}, "caption": {"type":"string"}, "language": {"type":"string"}, "categories": {"type":"array","items":{"type":"string"}}, "states": {"type":"array","items":{"type":"string"}}, "type": {"type":"string"}, "status": {"type":"string"} }},
-          "influencer": {"type":"object","properties": { "ulid": {"type":"string"}, "handle": {"type":"string"} }},
-          "ad": {"type":"object","properties": { "ulid": {"type":"string"} }}
-        } } } } } } }
-      }
-    },
-    "/api/discovery/influencers": {
-      "get": { "tags": ["Public","Discovery"], "summary": "Public: Discover influencers", "security": [],
-        "parameters": [
-          {"name":"budgetMin","in":"query","schema":{"type":"number"}},
-          {"name":"budgetMax","in":"query","schema":{"type":"number"}},
-          {"name":"categories","in":"query","schema":{"type":"string","description":"Comma-separated"}},
-          {"name":"language","in":"query","schema":{"type":"string"}},
-          {"name":"state","in":"query","schema":{"type":"string"}},
-          {"name":"page","in":"query","schema":{"type":"integer","default":1}},
-          {"name":"limit","in":"query","schema":{"type":"integer","default":20}}
-        ],
-        "responses": { "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/DiscoveryInfluencer" } } } } } }
-      }
-        },
-          "/api/brands/dashboard": {
-              "get": {
-                "tags": ["Brands"],
-                "summary": "Brand dashboard aggregates (advanced)",
-                "security": [{ "bearerAuth": [] }],
-                "responses": {
-                  "200": {
-                    "description": "OK",
-                    "content": {
-                      "application/json": {
-                        "schema": {
-                          "CreatePost": {
-                            "type": "object",
-                            "properties": {
-                              "type": { "type": "string", "enum": ["ad","external","portfolio"], "default": "external" },
-                              "caption": { "type": "string" },
-                              "media": { "type": "array", "items": { "$ref": "#/components/schemas/MediaEntry" } },
-                              "categories": { "type": "array", "items": { "type": "string" } },
-                              "language": { "type": "string" },
-                              "states": { "type": "array", "items": { "type": "string" } },
-                              "adId": { "type": "integer" }
-                            },
-                            "required": ["type"]
-                          },
-                          "Post": {
-                            "type": "object",
-                            "properties": {
-                              "id": { "type": "integer" },
-                              "idUlid": { "type": "string" },
-                              "userId": { "type": "integer" },
-                              "influencerId": { "type": "integer" },
-                              "adId": { "type": "integer" },
-                              "type": { "type": "string" },
-                              "caption": { "type": "string" },
-                              "categories": { "type": "array", "items": { "type": "string" } },
-                              "language": { "type": "string" },
-                              "states": { "type": "array", "items": { "type": "string" } },
-                              "media": { "type": "array", "items": { "$ref": "#/components/schemas/MediaEntry" } },
-                              "metrics": { "type": "object" }
-                            }
-                          },
-                          "MediaEntry": {
-                            "type": "object",
-                            "properties": {
-                              "type": { "type": "string", "enum": ["image","video"] },
-                              "url": { "type": "string" },
-                              "provider": { "type": "string" },
-                              "guid": { "type": "string" },
-                              "uploadUrl": { "type": "string" },
-                              "playbackUrl": { "type": "string" }
-                            }
-                          },
-                          "SignR2UploadRequest": {
-                            "type": "object", "properties": { "fileName": {"type":"string"}, "contentType": {"type":"string"} }, "required": ["fileName","contentType"]
-                          },
-                          "SignR2UploadResponse": {
-                            "type": "object", "properties": { "uploadUrl": {"type":"string"}, "publicUrl": {"type":"string"}, "key": {"type":"string"} }
-                          },
-                          "BunnyCreateResponse": {
-                            "type": "object", "properties": { "guid": {"type":"string"}, "uploadUrl": {"type":"string"}, "playbackUrl": {"type":"string"} }
-                          },
-                          "DiscoveryInfluencer": {
-                            "type": "object",
-                            "properties": {
-                              "id": { "type": "integer" },
-                              "idUlid": { "type": "string" },
-                              "handle": { "type": "string" },
-                              "languages": { "type": "array", "items": { "type": "string" } },
-                              "states": { "type": "array", "items": { "type": "string" } },
-                              "categories": { "type": "array", "items": { "type": "string" } },
-                              "pricing": { "type": "object" },
-                              "score": { "type": "number" }
-                            }
-                          }
-                        },
-                        "example": {
-                          "overview": { "totalAds": 12, "openAds": 4, "closedAds": 8 },
-                          "spend": { "total": 482000, "commission": 24000, "netPaid": 458000, "currency": "INR" },
-                          "funnel": { "applied": 320, "shortlisted": 76, "assigned": 28, "submitted": 22, "approved": 18 },
-                          "topInfluencers": [ { "id": 3, "handle": "@aarav" }, { "id": 7, "handle": "@megha" }, { "id": 11, "handle": "@rahul" } ],
-                          "timeline": [ { "date": "2025-12-12T09:10:00Z", "label": "submitted" }, { "date": "2025-12-11T15:20:00Z", "label": "assigned" }, { "date": "2025-12-10T12:00:00Z", "label": "shortlisted" } ],
-                          "notifications": [ { "type": "nudge", "msg": "Boost visibility: invite influencers to apply." }, { "type": "finance", "msg": "Commission accrued this month. Review spend breakdown." } ]
-                        }
-                      }
-                    }
-                  },
-                  "401": { "description": "Unauthorized" },
-                  "403": { "description": "Forbidden" }
-                }
-              }
-            },
-        "/api/locations/countries": {
-          "get": {
-            "tags": ["Public","Locations"],
-            "summary": "List countries",
-            "security": [],
-            "responses": { "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "array", "items": { "type": "object", "properties": { "id": { "type": "integer" }, "name": { "type": "string" } } } }, "example": [{ "id": 101, "name": "India" }] } } } }
-          }
-        },
-        "/api/locations/states": {
-          "get": {
-            "tags": ["Public","Locations"],
-            "summary": "List states",
-            "security": [],
-            "parameters": [ { "name": "countryId", "in": "query", "schema": { "type": "integer" }, "example": 101 } ],
-            "responses": { "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "array", "items": { "type": "object", "properties": { "id": { "type": "integer" }, "name": { "type": "string" }, "countryId": { "type": "integer" } } } }, "example": [{ "id": 36, "name": "Telangana", "countryId": 101 }] } } } }
-          }
-        },
-        "/api/locations/districts": {
-          "get": {
-            "tags": ["Public","Locations"],
-            "summary": "List districts",
-            "security": [],
-            "parameters": [ { "name": "stateId", "in": "query", "schema": { "type": "integer" }, "example": 36 } ],
-            "responses": { "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "array", "items": { "type": "object", "properties": { "id": { "type": "integer" }, "name": { "type": "string" }, "stateId": { "type": "integer" } } } }, "example": [{ "id": 540, "name": "Hyderabad", "stateId": 36 }] } } } }
-          }
-        },
-    "/api": {
-      "get": {
-        "summary": "API health/version",
-        "tags": ["Public"],
+        "summary": "Health check",
         "security": [],
         "responses": {
           "200": {
             "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": { "type": "object", "properties": { "status": { "type": "string" }, "version": { "type": "string" } } },
-                "example": { "status": "ok", "version": "1.0.0" }
-              }
-            }
-          }
-        }
-      }
-    },
-        "/api/locations/languages": {
-          "get": {
-            "tags": ["Public","Locations"],
-            "summary": "List Indian languages",
-            "security": [],
-            "responses": {
-              "200": {
-                "description": "OK",
-                "content": {
-                  "application/json": {
-                    "schema": { "type": "array", "items": { "type": "object", "properties": { "code": { "type": "string" }, "name": { "type": "string" } } } },
-                    "example": [ { "code": "te", "name": "Telugu" }, { "code": "hi", "name": "Hindi" }, { "code": "ta", "name": "Tamil" } ]
-                  }
-                }
-              }
-            }
-          }
-        },
-    "/api/auth/register": {
-        "description": "Registers a user with role influencer/brand/admin. Influencer/Brand profiles are auto-created.",
-      "post": {
-        "tags": ["Auth"],
-        "summary": "Register a user",
-        "security": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": ["name", "email", "phone", "mpin", "role"],
-                "properties": {
-                  "name": { "type": "string", "example": "Demo User" },
-                  "email": { "type": "string", "format": "email", "example": "demo@kaburlu.test" },
-                  "phone": { "type": "string", "example": "9999999999" },
-                  "mpin": { "type": "string", "description": "6-digit MPIN", "example": "123456" },
-                  "role": { "type": "string", "enum": ["influencer", "brand", "admin"], "example": "influencer" }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Registered",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "id": { "type": "integer", "example": 1 },
-                    "email": { "type": "string", "example": "demo@kaburlu.test" },
-                    "role": { "type": "string", "example": "influencer" }
+                    "ok": {
+                      "type": "boolean"
+                    },
+                    "time": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
                   }
-                }
-              }
-            }
-          },
-          "400": { "description": "Validation error (e.g., mpin format)" }
-        }
-      }
-    },
-    "/api/locations/bulk/states": {
-      "post": {
-        "tags": ["Locations"],
-        "summary": "Bulk upload states via CSV",
-        "security": [{ "bearerAuth": [] }],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "multipart/form-data": {
-              "schema": { "type": "object", "properties": { "file": { "type": "string", "format": "binary" } }, "required": ["file"] }
-            }
-          }
-        },
-        "responses": { "200": { "description": "Upload result", "content": { "application/json": { "schema": { "type": "object", "properties": { "created": { "type": "integer" }, "updated": { "type": "integer" } } }, "example": { "created": 25, "updated": 3 } } } }, "401": { "description": "Unauthorized" }, "403": { "description": "Forbidden" } }
-      }
-    },
-    "/api/locations/bulk/districts": {
-      "post": {
-        "tags": ["Locations"],
-        "summary": "Bulk upload districts via CSV",
-        "security": [{ "bearerAuth": [] }],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "multipart/form-data": {
-              "schema": { "type": "object", "properties": { "file": { "type": "string", "format": "binary" } }, "required": ["file"] }
-            }
-          }
-        },
-        "responses": { "200": { "description": "Upload result", "content": { "application/json": { "schema": { "type": "object", "properties": { "created": { "type": "integer" }, "updated": { "type": "integer" } } }, "example": { "created": 120, "updated": 4 } } } }, "401": { "description": "Unauthorized" }, "403": { "description": "Forbidden" } }
-      }
-    },
-    "/api/auth/login": {
-      "post": {
-        "tags": ["Auth"],
-        "summary": "Login and get JWT",
-        "security": [],
-        "description": "Login with email + mpin (or password). Returns JWT and role.",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": ["email", "mpin"],
-                "properties": {
-                  "email": { "type": "string", "format": "email", "example": "influencer@kaburlu.test" },
-                  "mpin": { "type": "string", "description": "6-digit MPIN", "example": "123456" }
+                },
+                "example": {
+                  "ok": true,
+                  "time": "2025-12-14T11:16:10.684Z"
                 }
               }
             }
           }
-        },
-        "responses": {
-          "200": { "description": "Logged in", "content": { "application/json": { "schema": { "type": "object", "properties": { "token": { "type": "string" }, "expiresIn": { "type": "integer", "example": 900 }, "expiresAt": { "type": "string", "format": "date-time" }, "refreshToken": { "type": "string" }, "refreshExpiresAt": { "type": "string", "format": "date-time" }, "user": { "type": "object", "properties": { "id": { "type": "integer" }, "role": { "type": "string" }, "name": { "type": "string" }, "handle": { "type": "string", "nullable": true } } } } }, "example": { "token": "eyJhbGciOi...", "expiresIn": 900, "expiresAt": "2025-12-10T10:15:00.000Z", "refreshToken": "ab12...", "refreshExpiresAt": "2025-12-17T10:00:00.000Z", "user": { "id": 4, "role": "influencer", "name": "Demo User", "handle": "@demo" } } } } },
-          "401": { "description": "Invalid credentials" }
         }
       }
     },
-    "/api/auth/login-mobile": {
-      "post": {
-        "tags": ["Auth"],
-        "summary": "Login with mobile number + MPIN",
-        "security": [],
-        "description": "Authenticate using phone number and 6-digit MPIN. Returns JWT and role.",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": ["phone", "mpin"],
-                "properties": {
-                  "phone": { "type": "string", "example": "9999999999" },
-                  "mpin": { "type": "string", "example": "123456" }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": { "description": "Logged in", "content": { "application/json": { "schema": { "type": "object", "properties": { "token": { "type": "string" }, "expiresIn": { "type": "integer", "example": 900 }, "expiresAt": { "type": "string", "format": "date-time" }, "refreshToken": { "type": "string" }, "refreshExpiresAt": { "type": "string", "format": "date-time" }, "user": { "type": "object", "properties": { "id": { "type": "integer" }, "role": { "type": "string" }, "name": { "type": "string" }, "handle": { "type": "string", "nullable": true } } } } }, "example": { "token": "eyJhbGciOi...", "expiresIn": 900, "expiresAt": "2025-12-10T10:15:00.000Z", "refreshToken": "ab12...", "refreshExpiresAt": "2025-12-17T10:00:00.000Z", "user": { "id": 4, "role": "influencer", "name": "Demo User", "handle": "@demo" } } } } },
-          "401": { "description": "Invalid credentials" }
-        }
-      }
-    },
-    "/api/auth/refresh": {
-      "post": {
-        "tags": ["Auth"],
-        "summary": "Exchange refresh token for new access token",
-        "security": [],
-        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "properties": { "refreshToken": { "type": "string" } }, "required": ["refreshToken"] }, "example": { "refreshToken": "ab12..." } } } },
-        "responses": { "200": { "description": "New access token", "content": { "application/json": { "schema": { "type": "object", "properties": { "token": { "type": "string" }, "expiresIn": { "type": "integer", "example": 900 }, "expiresAt": { "type": "string", "format": "date-time" }, "refreshToken": { "type": "string" }, "refreshExpiresAt": { "type": "string", "format": "date-time" }, "user": { "type": "object", "properties": { "id": { "type": "integer" }, "role": { "type": "string" }, "name": { "type": "string" }, "handle": { "type": "string", "nullable": true } } } } }, "example": { "token": "eyJhbGciOi...", "expiresIn": 900, "expiresAt": "2025-12-10T11:15:00.000Z", "refreshToken": "cd34...", "refreshExpiresAt": "2025-12-17T10:00:00.000Z", "user": { "id": 4, "role": "influencer", "name": "Demo User", "handle": "@demo" } } } } }, "401": { "description": "Invalid/expired refresh token" }, "429": { "description": "Too many requests" } }
-      }
-    },
-    "/api/auth/logout": {
-      "post": {
-        "tags": ["Auth"],
-        "summary": "Logout: revoke a refresh token",
-        "security": [],
-        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "properties": { "refreshToken": { "type": "string" } }, "required": ["refreshToken"] }, "example": { "refreshToken": "ab12..." } } } },
-        "responses": { "200": { "description": "Revoked", "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" } } }, "example": { "success": true } } } } }
-      }
-    },
-    "/api/auth/logout-all": {
-      "post": {
-        "tags": ["Auth"],
-        "summary": "Global logout: revoke all refresh tokens for current user",
-        "security": [{ "bearerAuth": [] }],
-        "responses": { "200": { "description": "Revoked", "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" } } }, "example": { "success": true } } } }, "401": { "description": "Unauthorized" } }
-      }
-    },
-
-    "/api/auth/request-mpin-reset": {
-      "post": {
-        "tags": ["Auth"],
-        "summary": "Request MPIN reset OTP",
-        "security": [],
-        "description": "Sends an OTP to the user's phone for MPIN reset.",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": ["phone"],
-                "properties": {
-                  "phone": { "type": "string", "example": "9999999999" }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": { "description": "OTP sent", "content": { "application/json": { "schema": { "type": "object", "properties": { "requestId": { "type": "string" } } }, "example": { "requestId": "req_abcdef123456" } } } },
-          "400": { "description": "Phone not found or rate limited" }
-        }
-      }
-    },
-
-    "/api/auth/verify-mpin-reset": {
-      "post": {
-        "tags": ["Auth"],
-        "summary": "Verify OTP and reset MPIN",
-        "security": [],
-        "description": "Verifies OTP and sets a new 6-digit MPIN for the account.",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": ["phone", "otp", "newMpin"],
-                "properties": {
-                  "phone": { "type": "string", "example": "9999999999" },
-                  "otp": { "type": "string", "example": "432101" },
-                  "newMpin": { "type": "string", "example": "654321" }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": { "description": "MPIN updated", "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" } } }, "example": { "success": true } } } },
-          "400": { "description": "Invalid OTP or phone" }
-        }
-      }
-    },
-    "/api/influencers/me": {
+    "/api": {
       "get": {
-        "tags": ["Influencers"],
-        "summary": "Get current influencer",
+        "tags": [
+          "Health"
+        ],
+        "summary": "Health check",
+        "security": [],
         "responses": {
           "200": {
             "description": "OK",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Influencer" },
-                "example": {
-                  "id": 1,
-                  "handle": "@demo",
-                  "countryId": 101,
-                  "stateId": 36,
-                  "stateIds": [36, 29],
-                  "districtId": 540,
-                  "languages": ["Telugu"],
-                  "socialLinks": { "instagram": "@demo" },
-                  "adPricing": {
-                    "instagramPost": 5000,
-                    "instagramReel": 8000,
-                    "bundleInstagramReelStory": 12000,
-                    "whitelistedUsage30d": 5000,
-                    "travelAllowancePerDay": 2000,
-                    "negotiable": true,
-                    "currency": "INR"
-                  },
-                  "location": {
-                    "country": 101,
-                    "countryName": "India",
-                    "state": 36,
-                    "stateName": "Telangana",
-                    "stateIds": [36, 29],
-                    "stateNames": ["Telangana", "Karnataka"],
-                    "district": 540,
-                    "districtName": "Hyderabad"
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    },
+                    "version": {
+                      "type": "string"
+                    }
                   }
+                },
+                "example": {
+                  "ok": true,
+                  "version": "kaburlu-backend-v2"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/register": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Register",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthRegisterRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Login (password)",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthLoginRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/login-mobile": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Login (mobile / MPIN flow)",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthMobileLoginRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/request-mpin-reset": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Request MPIN reset",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MpinResetRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    }
+                  }
+                },
+                "example": {
+                  "ok": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/verify-mpin-reset": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Verify MPIN reset",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MpinResetVerifyRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    }
+                  }
+                },
+                "example": {
+                  "ok": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/refresh": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Refresh access token",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthRefreshRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Logout (invalidate refresh token)",
+        "security": [],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    }
+                  }
+                },
+                "example": {
+                  "ok": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/logout-all": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Logout all sessions",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    }
+                  }
+                },
+                "example": {
+                  "ok": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ads": {
+      "get": {
+        "tags": [
+          "Ads"
+        ],
+        "summary": "List ads",
+        "security": [],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Ad"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Ads"
+        ],
+        "summary": "Create ad (brand)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ad"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ads/feed": {
+      "post": {
+        "tags": [
+          "Ads"
+        ],
+        "summary": "Ads feed (filters)",
+        "security": [],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdsFeedRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Ad"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ads/{id}": {
+      "put": {
+        "tags": [
+          "Ads"
+        ],
+        "summary": "Update ad (brand)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ad"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ads/{id}/payment/initiate": {
+      "post": {
+        "tags": [
+          "Ads"
+        ],
+        "summary": "Initiate payment (Razorpay)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PaymentInitiateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentInitiateResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ads/payment/confirm": {
+      "post": {
+        "tags": [
+          "Ads"
+        ],
+        "summary": "Confirm payment",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PaymentConfirmRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    }
+                  }
+                },
+                "example": {
+                  "success": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/applications/{adId}/apply": {
+      "post": {
+        "tags": [
+          "Applications"
+        ],
+        "summary": "Apply to an ad (influencer)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "adId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApplicationApplyRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Application"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/applications/submit/{appId}": {
+      "post": {
+        "tags": [
+          "Applications"
+        ],
+        "summary": "Submit deliverable (influencer)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "appId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeliverableSubmitRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Application"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/applications/approve/{appId}": {
+      "post": {
+        "tags": [
+          "Applications"
+        ],
+        "summary": "Approve and payout (brand/admin)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "appId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApproveAndPayoutResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/influencers/me": {
+      "get": {
+        "tags": [
+          "Influencers"
+        ],
+        "summary": "Get current user influencer profile",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InfluencerMe"
                 }
               }
             }
@@ -869,61 +796,33 @@
         }
       },
       "put": {
-        "tags": ["Influencers"],
+        "tags": [
+          "Influencers"
+        ],
         "summary": "Update influencer profile",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/Influencer" },
-              "examples": {
-                "Basic": {
-                  "value": {
-                    "handle": "@myhandle",
-                    "countryId": 101,
-                    "stateIds": [36],
-                    "districtId": 540,
-                    "languages": ["Telugu"],
-                    "socialLinks": { "instagram": "@myinsta" }
-                  }
-                },
-                "Full": {
-                  "value": {
-                    "handle": "@myhandle",
-                    "countryId": 101,
-                    "stateIds": [36, 29],
-                    "districtId": 540,
-                    "addressLine1": "Flat 12, Sunrise Residency",
-                    "addressLine2": "Madhapur, Near Metro",
-                    "postalCode": "500081",
-                    "adPricing": {
-                      "instagramPost": 5000,
-                      "instagramStory": 2500,
-                      "instagramReel": 8000,
-                      "youtubeShort": 10000,
-                      "youtubeIntegration": 25000,
-                      "bundleInstagramReelStory": 12000,
-                      "exclusiveCategory": 8000,
-                      "travelAllowancePerDay": 2000,
-                      "negotiable": true,
-                      "currency": "INR"
-                    },
-                    "languages": ["Telugu", "English"],
-                    "socialLinks": { "instagram": "@myinsta", "youtube": "https://youtube.com/@me" },
-                    "followers": { "instagram": 15000 },
-                    "bio": "Short bio about my content and audience."
-                  }
-                }
+              "schema": {
+                "$ref": "#/components/schemas/InfluencerUpdateRequest"
               }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "Updated",
+            "description": "OK",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Influencer" }
+                "schema": {
+                  "$ref": "#/components/schemas/InfluencerMe"
+                }
               }
             }
           }
@@ -932,9 +831,247 @@
     },
     "/api/influencers/dashboard": {
       "get": {
-        "tags": ["Influencers"],
-        "summary": "Influencer dashboard aggregates",
-        "security": [{ "bearerAuth": [] }],
+        "tags": [
+          "Influencers"
+        ],
+        "summary": "Influencer dashboard",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/influencers/me/profile-pic": {
+      "put": {
+        "tags": [
+          "Influencers"
+        ],
+        "summary": "Update profile picture",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "imageUrl": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "imageUrl"
+                ]
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                },
+                "required": [
+                  "file"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InfluencerMe"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/influencers/me/pricing": {
+      "get": {
+        "tags": [
+          "Influencers"
+        ],
+        "summary": "Get influencer pricing",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InfluencerPricing"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Influencers"
+        ],
+        "summary": "Update influencer pricing",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InfluencerPricing"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InfluencerPricing"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Influencers"
+        ],
+        "summary": "Update influencer pricing (alias)",
+        "description": "Alias of PUT /api/influencers/me/pricing for clients that use POST.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InfluencerPricing"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InfluencerPricing"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/influencers/me/kyc": {
+      "get": {
+        "tags": [
+          "Influencers"
+        ],
+        "summary": "Get KYC",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KycOutput"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Influencers"
+        ],
+        "summary": "Update KYC",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KycInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KycOutput"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/influencers/me/payment-methods": {
+      "get": {
+        "tags": [
+          "Influencers"
+        ],
+        "summary": "List payment methods",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -943,312 +1080,612 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "influencer": { "type": "object", "properties": { "id": { "type": "integer" }, "handle": { "type": "string" }, "verificationStatus": { "type": "string" }, "badges": { "type": "array", "items": { "type": "string" } } } },
-                    "metrics": { "type": "object", "properties": { "activeBriefs": { "type": "integer" }, "pendingApprovals": { "type": "integer" }, "earningsMonth": { "type": "number" }, "nextPayout": { "type": "string" } } },
-                    "calendar": { "type": "object", "properties": { "days": { "type": "array", "items": { "type": "object", "properties": { "date": { "type": "string" }, "hasTask": { "type": "boolean" } } } } } },
-                    "briefs": { "type": "object", "properties": { "items": { "type": "array", "items": { "type": "object", "properties": { "campaign": { "type": "string" }, "type": { "type": "string" }, "due": { "type": "string" }, "status": { "type": "string", "enum": ["In progress", "Pending approval", "Assigned", "Completed"] } } } } } },
-                    "payouts": { "type": "object", "properties": { "history": { "type": "array", "items": { "type": "object", "properties": { "month": { "type": "string" }, "amount": { "type": "number" }, "status": { "type": "string" } } } }, "nextPayout": { "type": "string" } } }
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/PaymentMethod"
+                      }
+                    }
                   }
-                },
-                "example": {
-                  "influencer": { "id": 1, "handle": "@demo", "verificationStatus": "green-tick", "badges": ["top-creator"] },
-                  "metrics": { "activeBriefs": 3, "pendingApprovals": 2, "earningsMonth": 1280, "nextPayout": "2025-12-28" },
-                  "calendar": { "days": [ { "date": "2025-12-12", "hasTask": true }, { "date": "2025-12-13", "hasTask": false } ] },
-                  "briefs": { "items": [ { "campaign": "Acme Fitness", "type": "TikTok + Stories", "due": "2025-12-20", "status": "In progress" }, { "campaign": "Glow Cosmetics", "type": "UGC video", "due": "2025-12-15", "status": "Pending approval" }, { "campaign": "Neo Tech", "type": "Instagram Reel", "due": "2025-12-26", "status": "Assigned" } ] },
-                  "payouts": { "history": [ { "month": "Nov", "amount": 980, "status": "Paid" }, { "month": "Oct", "amount": 1120, "status": "Paid" }, { "month": "Sep", "amount": 870, "status": "Paid" } ], "nextPayout": "2025-12-28" }
                 }
               }
             }
-          },
-          "401": { "description": "Unauthorized" }
+          }
         }
-      }
-    },
-    "/api/influencers/{id}/badges": {
+      },
       "put": {
-        "tags": ["Influencers"],
-        "summary": "Assign verification/badges (admin)",
-        "security": [{ "bearerAuth": [] }],
-        "parameters": [ { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } } ],
+        "tags": [
+          "Influencers"
+        ],
+        "summary": "Upsert payment method",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "requestBody": {
           "required": true,
-          "content": { "application/json": { "schema": { "type": "object", "required": ["verificationStatus"], "properties": { "verificationStatus": { "type": "string", "enum": ["none", "green-tick", "silver", "gold"], "description": "Primary verification badge applied to profile" }, "badges": { "type": "array", "items": { "type": "string", "enum": ["top-creator", "verified", "brand-favorite", "fast-responder", "on-time" ] }, "description": "Additional badges to showcase profile merits" } } }, "examples": { "Green tick + top creator": { "value": { "verificationStatus": "green-tick", "badges": ["top-creator"] } }, "Silver + multiple badges": { "value": { "verificationStatus": "silver", "badges": ["verified", "fast-responder", "on-time"] } }, "No verification + favorite": { "value": { "verificationStatus": "none", "badges": ["brand-favorite"] } } } } }
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PaymentMethodInput"
+              }
+            }
+          }
         },
-        "responses": { "200": { "description": "Updated", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Influencer" } } } }, "401": { "description": "Unauthorized" }, "403": { "description": "Forbidden" } }
-      }
-    },
-    "/api/influencers/me/pricing": {
-      "get": {
-        "tags": ["Influencers"],
-        "summary": "Get influencer ad pricing",
         "responses": {
           "200": {
             "description": "OK",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Influencer" },
-                "examples": {
-                  "Minimal": { "value": { "adPricing": { "instagramPost": 5000 } } },
-                  "Advanced": { "value": { "adPricing": { "instagramPost": 7000, "instagramReel": 12000, "bundleInstagramReelStory": 15000, "whitelistedUsage90d": 14000, "exclusiveCategory": 9000, "travelAllowancePerDay": 2500, "negotiable": true, "currency": "INR" } } }
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "method": {
+                      "$ref": "#/components/schemas/PaymentMethod"
+                    }
+                  }
                 }
               }
             }
           }
         }
-      },
-      "put": {
-        "tags": ["Influencers"],
-        "summary": "Update influencer ad pricing",
-        "requestBody": {
-          "required": true,
-          "content": { "application/json": { "schema": { "type": "object", "properties": { "adPricing": { "$ref": "#/components/schemas/Influencer/properties/adPricing" } }, "required": ["adPricing"] }, "examples": { "Minimal": { "value": { "adPricing": { "instagramPost": 6000, "negotiable": true } } }, "Advanced": { "value": { "adPricing": { "instagramPost": 7000, "instagramReel": 12000, "bundleInstagramReelStory": 15000, "whitelistedUsage90d": 14000, "exclusiveCategory": 9000, "travelAllowancePerDay": 2500, "negotiable": true, "currency": "INR" } } } } } }
-        },
-        "responses": { "200": { "description": "Updated", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Influencer" } } } } }
       }
     },
-    "/api/ads": {
-      "get": {
-        "tags": ["Public","Ads"],
-        "summary": "List ads",
-        "security": [],
-        "parameters": [
-          { "name": "state", "in": "query", "schema": { "type": "string" }, "description": "Filter by target state", "example": "Telangana" },
-          { "name": "language", "in": "query", "schema": { "type": "string" }, "description": "Filter by language", "example": "Telugu" },
-          { "name": "page", "in": "query", "schema": { "type": "integer" }, "example": 1 },
-          { "name": "limit", "in": "query", "schema": { "type": "integer" }, "example": 20 }
+    "/api/influencers/{id}/badges": {
+      "put": {
+        "tags": [
+          "Influencers"
         ],
-        "responses": {
-          "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Ad" } }, "example": [{ "id": 101, "title": "Regional food promotion", "payPerInfluencer": 8000 }] } } }
-        }
-      },
-      "post": {
-        "tags": ["Ads"],
-        "summary": "Create ad (brand)",
+        "summary": "Assign influencer badges (admin)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["title", "description", "targetStates", "language", "payPerInfluencer", "budget"],
                 "properties": {
-                  "title": { "type": "string" },
-                  "description": { "type": "string" },
-                  "targetStates": { "type": "array", "items": { "type": "string" } },
-                  "language": { "type": "string" },
-                  "payPerInfluencer": { "type": "number" },
-                  "categories": { "type": "array", "items": { "type": "string" }, "example": ["food", "regional"] },
-                  "deliverables": { "type": "array", "items": { "type": "string" }, "example": ["instagramReel", "instagramStory"] },
-                  "briefUrl": { "type": "string", "description": "External doc link (Google Drive/Notion) for full brief" },
-                  "mediaRefs": {
-                    "type": "object",
-                    "description": "Reference assets for creators",
-                    "properties": {
-                      "images": { "type": "array", "items": { "type": "string", "format": "uri" }, "example": ["https://cdn.kaburlu.com/assets/logo.png", "https://cdn.kaburlu.com/assets/moodboard.jpg"] },
-                      "videos": { "type": "array", "items": { "type": "string", "format": "uri" }, "example": ["https://cdn.kaburlu.com/assets/reference.mp4"] },
-                      "docs": { "type": "array", "items": { "type": "string", "format": "uri" }, "example": ["https://drive.google.com/file/d/abc/view"] }
+                  "badges": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
                     }
-                  },
-                  "timeline": {
-                    "type": "object",
-                    "properties": {
-                      "applyBy": { "type": "string", "format": "date" },
-                      "shootBy": { "type": "string", "format": "date" },
-                      "goLiveBy": { "type": "string", "format": "date" }
-                    }
-                  },
-                  "budget": { "type": "object", "required": ["total", "currency"], "properties": { "total": { "type": "number", "description": "Total campaign budget (e.g., sum of all influencer payouts + fees)" }, "currency": { "type": "string", "example": "INR" }, "maxInfluencers": { "type": "integer", "example": 10 } } }
-                }
-              },
-              "examples": {
-                "Minimal": {
-                  "value": { "title": "Regional food promotion", "description": "Promote in Telangana", "targetStates": ["Telangana"], "language": "Telugu", "payPerInfluencer": 8000, "budget": { "total": 80000, "currency": "INR", "maxInfluencers": 10 } }
+                  }
                 },
-                "With assets and timeline": {
-                  "value": {
-                    "title": "Winter campaign",
-                    "description": "Reel + Story showcasing new product",
-                    "targetStates": ["Telangana", "Karnataka"],
-                    "language": "English",
-                    "payPerInfluencer": 12000,
-                    "categories": ["fashion", "seasonal"],
-                    "deliverables": ["instagramReel", "instagramStory"],
-                    "briefUrl": "https://notion.so/brand/brief-123",
-                    "mediaRefs": {
-                      "images": ["https://cdn.kaburlu.com/assets/look1.jpg"],
-                      "videos": ["https://cdn.kaburlu.com/assets/reference.mp4"],
-                      "docs": ["https://drive.google.com/file/d/abc/view"]
-                    },
-                    "timeline": { "applyBy": "2025-12-20", "shootBy": "2025-12-24", "goLiveBy": "2025-12-27" },
-                    "budget": { "total": 240000, "currency": "INR", "maxInfluencers": 20 }
-                  }
-                }
+                "required": [
+                  "badges"
+                ]
               }
-            }
-          }
-        },
-        "responses": { "200": { "description": "Created", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Ad" } } } } }
-      }
-    },
-
-    "/api/ads/{id}": {
-      "put": {
-        "tags": ["Ads"],
-        "summary": "Update ad (brand)",
-        "security": [{ "bearerAuth": [] }],
-        "parameters": [ { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } } ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "title": { "type": "string" },
-                  "description": { "type": "string" },
-                  "targetStates": { "type": "array", "items": { "type": "string" } },
-                  "language": { "type": "string" },
-                  "payPerInfluencer": { "type": "number" },
-                  "categories": { "type": "array", "items": { "type": "string" } },
-                  "deliverables": { "type": "array", "items": { "type": "string" } },
-                  "briefUrl": { "type": "string" },
-                  "mediaRefs": { "$ref": "#/paths/~1api~1ads/post/requestBody/content/application~1json/schema/properties/mediaRefs" },
-                  "timeline": { "$ref": "#/paths/~1api~1ads/post/requestBody/content/application~1json/schema/properties/timeline" },
-                  "budget": { "$ref": "#/paths/~1api~1ads/post/requestBody/content/application~1json/schema/properties/budget" }
-                }
-              },
-              "examples": {
-                "Update assets + budget": {
-                  "value": {
-                    "mediaRefs": {
-                      "images": ["https://cdn.kaburlu.com/assets/look2.jpg"],
-                      "videos": ["https://cdn.kaburlu.com/assets/reference_v2.mp4"],
-                      "docs": ["https://notion.so/brand/brief-updated"]
-                    },
-                    "budget": { "total": 300000, "currency": "INR", "maxInfluencers": 25 }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": { "200": { "description": "Updated", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Ad" } } } }, "401": { "description": "Unauthorized" }, "403": { "description": "Forbidden" }, "400": { "description": "Invalid payload" } }
-      }
-    },
-    
-    "/api/ads/{id}/payment/initiate": {
-      "post": {
-        "tags": ["Ads"],
-        "summary": "Initiate Razorpay order for ad budget",
-        "security": [{ "bearerAuth": [] }],
-        "parameters": [ { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } } ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": { "type": "object", "properties": { "amount": { "type": "number", "description": "Amount in INR" }, "currency": { "type": "string", "example": "INR" }, "notes": { "type": "object" } }, "required": ["amount", "currency"] },
-              "example": { "amount": 240000, "currency": "INR", "notes": { "adId": 101, "purpose": "Campaign budget" } }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "Order created",
+            "description": "OK",
             "content": {
               "application/json": {
-                "schema": { "type": "object", "properties": { "orderId": { "type": "string" }, "amount": { "type": "number" }, "currency": { "type": "string" }, "keyId": { "type": "string" } } },
-                "example": { "orderId": "order_Mno123", "amount": 240000, "currency": "INR", "keyId": "rzp_test_abc123" }
+                "schema": {
+                  "type": "object"
+                }
               }
             }
-          },
-          "401": { "description": "Unauthorized" }
+          }
         }
       }
     },
-    
-    "/api/ads/payment/confirm": {
+    "/api/influencers/{id}/ads": {
       "post": {
-        "tags": ["Ads"],
-        "summary": "Confirm Razorpay payment (webhook/client confirm)",
-        "security": [],
+        "tags": [
+          "Influencers"
+        ],
+        "summary": "Create influencer ad post",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "required": ["orderId", "paymentId", "signature"],
-                "properties": {
-                  "orderId": { "type": "string" },
-                  "paymentId": { "type": "string" },
-                  "signature": { "type": "string" },
-                  "adId": { "type": "integer" }
-                }
-              },
-              "example": { "orderId": "order_Mno123", "paymentId": "pay_Xyz456", "signature": "generated_signature", "adId": 101 }
+                "$ref": "#/components/schemas/CreatePostRequest"
+              }
             }
           }
         },
         "responses": {
-          "200": { "description": "Payment verified", "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" }, "adBudgetPaid": { "type": "boolean" }, "transactionId": { "type": "string" } } }, "example": { "success": true, "adBudgetPaid": true, "transactionId": "txn_789" } } } },
-          "400": { "description": "Invalid signature or payload" }
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Post"
+                }
+              }
+            }
+          }
         }
       }
     },
-    "/api/applications/{adId}/apply": {
-      "post": {
-        "tags": ["Applications"],
-        "summary": "Apply to ad",
-        "parameters": [ { "name": "adId", "in": "path", "required": true, "schema": { "type": "string" } } ],
-        "requestBody": { "required": false, "content": { "application/json": { "schema": { "type": "object", "properties": { "state": { "type": "string" }, "message": { "type": "string" } } }, "example": { "state": "Telangana", "message": "Excited to collaborate!" } } } },
-        "responses": { "200": { "description": "Applied", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Application" } } } } }
+    "/api/influencers/{id}/feed": {
+      "get": {
+        "tags": [
+          "Influencers"
+        ],
+        "summary": "Influencer feed",
+        "security": [],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Post"
+                  }
+                }
+              }
+            }
+          }
+        }
       }
     },
-    "/api/applications/submit/{appId}": {
-      "post": {
-        "tags": ["Applications"],
-        "summary": "Submit deliverable",
-        "parameters": [ { "name": "appId", "in": "path", "required": true, "schema": { "type": "string" } } ],
-        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "properties": { "creativeUrl": { "type": "string" } }, "required": ["creativeUrl"] }, "example": { "creativeUrl": "https://pub-.../uploads/3/video/uuid.mp4" } } } },
-        "responses": { "200": { "description": "Submitted", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Application" } } } } }
+    "/api/influencers/ads": {
+      "get": {
+        "tags": [
+          "Influencers"
+        ],
+        "summary": "Public influencer ads",
+        "security": [],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Post"
+                  }
+                }
+              }
+            }
+          }
+        }
       }
     },
-    "/api/applications/approve/{appId}": {
+    "/api/influencers/ads/media": {
+      "get": {
+        "tags": [
+          "Influencers"
+        ],
+        "summary": "Public influencer ad media (canonical)",
+        "security": [],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "influencerUlid",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "postUlid",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "adUlid",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/InfluencerAdMediaItem"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/influencers/me/ads/video": {
       "post": {
-        "tags": ["Applications"],
-        "summary": "Approve and payout",
-        "parameters": [ { "name": "appId", "in": "path", "required": true, "schema": { "type": "string" } } ],
-        "responses": { "200": { "description": "Approved", "content": { "application/json": { "schema": { "type": "object", "properties": { "app": { "$ref": "#/components/schemas/Application" }, "payout": { "$ref": "#/components/schemas/Payout" } } } } } } }
+        "tags": [
+          "Influencers"
+        ],
+        "summary": "Upload Bunny video for own ad post",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "caption": {
+                    "type": "string"
+                  },
+                  "thumbnailUrl": {
+                    "type": "string"
+                  },
+                  "postUlid": {
+                    "type": "string"
+                  },
+                  "category": {
+                    "type": "string"
+                  },
+                  "categoryCode": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "file"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/posts": {
+      "post": {
+        "tags": [
+          "Posts"
+        ],
+        "summary": "Create post",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePostRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Post"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/posts/feed": {
+      "get": {
+        "tags": [
+          "Posts"
+        ],
+        "summary": "Posts feed",
+        "security": [],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 20
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "language",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Post"
+                      }
+                    },
+                    "nextCursor": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/posts/{idUlid}": {
+      "get": {
+        "tags": [
+          "Posts"
+        ],
+        "summary": "Get post by ULID",
+        "security": [],
+        "parameters": [
+          {
+            "name": "idUlid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Post"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/posts/{idUlid}/video": {
+      "post": {
+        "tags": [
+          "Posts"
+        ],
+        "summary": "Create Bunny video for post",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "idUlid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BunnyCreateResponse"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/profile-builder/generate": {
       "post": {
-        "tags": ["Profile Builder"],
-        "summary": "Generate influencer pack",
+        "tags": [
+          "Profile Builder"
+        ],
+        "summary": "Generate profile pack",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "type": "object", "properties": { "name": { "type": "string" }, "niche": { "type": "string" }, "city": { "type": "string" } } },
-              "examples": {
-                "Basic": { "value": { "name": "Demo", "niche": "food", "city": "Hyderabad" } },
-                "Detailed": { "value": { "name": "Aarav", "niche": "fitness", "city": "Mumbai" } }
+              "schema": {
+                "type": "object"
               }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "Generated",
+            "description": "OK",
             "content": {
               "application/json": {
-                "schema": { "type": "object", "properties": { "shortBio": { "type": "string" }, "longBio": { "type": "string" }, "jsonLd": { "type": "object" }, "packId": { "type": "string" }, "ai": { "type": "boolean" } } },
-                "example": {
-                  "shortBio": "Food creator from Hyderabad",
-                  "longBio": "I create regional food reviews and recipes with a focus on Telangana cuisine.",
-                  "jsonLd": { "@context": "https://schema.org", "@type": "Person", "name": "Demo" },
-                  "packId": "pack_123abc",
-                  "ai": true
+                "schema": {
+                  "type": "object"
                 }
               }
             }
@@ -1258,18 +1695,160 @@
     },
     "/api/profile-builder/pack/{id}": {
       "get": {
-        "tags": ["Profile Builder"],
-        "summary": "Get a generated pack",
-        "parameters": [ { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } } ],
-        "responses": { "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "object" }, "example": { "msg": "Demo pack content for <id>" } } } } }
+        "tags": [
+          "Profile Builder"
+        ],
+        "summary": "Get profile pack",
+        "security": [],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
       }
-    }
-    ,
-    "/api/media/upload": {
+    },
+    "/api/locations/countries": {
+      "get": {
+        "tags": [
+          "Locations"
+        ],
+        "summary": "List countries",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Country"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/locations/states": {
+      "get": {
+        "tags": [
+          "Locations"
+        ],
+        "summary": "List states",
+        "security": [],
+        "parameters": [
+          {
+            "name": "countryId",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/State"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/locations/districts": {
+      "get": {
+        "tags": [
+          "Locations"
+        ],
+        "summary": "List districts",
+        "security": [],
+        "parameters": [
+          {
+            "name": "stateId",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/District"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/locations/languages": {
+      "get": {
+        "tags": [
+          "Locations"
+        ],
+        "summary": "List languages",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Language"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/locations/bulk/states": {
       "post": {
-        "tags": ["Media"],
-        "summary": "Upload media to Cloudflare R2",
-        "description": "Uploads an image or video and returns a public URL",
+        "tags": [
+          "Locations"
+        ],
+        "summary": "Bulk upload states CSV (admin)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -1277,36 +1856,1309 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "file": { "type": "string", "format": "binary" }
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
                 },
-                "required": ["file"]
+                "required": [
+                  "file"
+                ]
               }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "Uploaded",
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/locations/bulk/districts": {
+      "post": {
+        "tags": [
+          "Locations"
+        ],
+        "summary": "Bulk upload districts CSV (admin)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                },
+                "required": [
+                  "file"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/media/upload": {
+      "post": {
+        "tags": [
+          "Media"
+        ],
+        "summary": "Upload media to R2",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                },
+                "required": [
+                  "file"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaUploadResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/brands/dashboard": {
+      "get": {
+        "tags": [
+          "Brands"
+        ],
+        "summary": "Brand dashboard",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/uploads/r2/sign": {
+      "post": {
+        "tags": [
+          "Uploads"
+        ],
+        "summary": "Sign R2 upload",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/R2SignRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/R2SignResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/uploads/bunny/video": {
+      "post": {
+        "tags": [
+          "Uploads"
+        ],
+        "summary": "Create Bunny Stream video entry",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BunnyCreateResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/discovery/influencers": {
+      "get": {
+        "tags": [
+          "Discovery"
+        ],
+        "summary": "Search influencers",
+        "security": [],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DiscoveryInfluencer"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/categories": {
+      "get": {
+        "tags": [
+          "Categories"
+        ],
+        "summary": "List categories",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Category"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/bunny/videos": {
+      "get": {
+        "tags": [
+          "Bunny"
+        ],
+        "summary": "Admin: list Bunny videos",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "perPage",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 20
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/bunny/media/status-counts": {
+      "get": {
+        "tags": [
+          "Bunny"
+        ],
+        "summary": "Admin: media status counts",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "url": { "type": "string", "example": "https://pub-...r2.dev/uploads/2/image/uuid-file.jpg" },
-                    "key": { "type": "string", "example": "uploads/2/image/uuid-file.jpg" },
-                    "type": { "type": "string", "example": "image" },
-                    "sizeMB": { "type": "number", "example": 2.45 }
+                    "counts": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "integer"
+                      }
+                    }
                   }
-                },
-                "examples": {
-                  "image": { "value": { "url": "https://pub-.../uploads/2/image/uuid.jpg", "key": "uploads/2/image/uuid.jpg", "type": "image", "sizeMB": 1.2 } },
-                  "video": { "value": { "url": "https://pub-.../uploads/2/video/uuid.mp4", "key": "uploads/2/video/uuid.mp4", "type": "video", "sizeMB": 23.7 } }
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/api/posts/{idUlid}/playback": {
+      "get": {
+        "tags": [
+          "Bunny"
+        ],
+        "summary": "Public: post playback info",
+        "security": [],
+        "parameters": [
+          {
+            "name": "idUlid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bunny/videos/{guid}/status": {
+      "get": {
+        "tags": [
+          "Bunny"
+        ],
+        "summary": "Public: Bunny video status",
+        "security": [],
+        "parameters": [
+          {
+            "name": "guid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string"
           },
-          "413": { "description": "File too large" },
-          "400": { "description": "Unsupported file type or missing file" }
+          "details": {
+            "type": "string"
+          }
+        }
+      },
+      "AuthRegisterRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "influencer",
+              "brand"
+            ]
+          }
+        }
+      },
+      "AuthLoginRequest": {
+        "type": "object",
+        "required": [
+          "phone",
+          "password"
+        ],
+        "properties": {
+          "phone": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          }
+        }
+      },
+      "AuthMobileLoginRequest": {
+        "type": "object",
+        "properties": {
+          "phone": {
+            "type": "string"
+          },
+          "mpin": {
+            "type": "string"
+          },
+          "otp": {
+            "type": "string"
+          }
+        }
+      },
+      "AuthRefreshRequest": {
+        "type": "object",
+        "required": [
+          "refreshToken"
+        ],
+        "properties": {
+          "refreshToken": {
+            "type": "string"
+          }
+        }
+      },
+      "MpinResetRequest": {
+        "type": "object",
+        "required": [
+          "phone"
+        ],
+        "properties": {
+          "phone": {
+            "type": "string"
+          }
+        }
+      },
+      "MpinResetVerifyRequest": {
+        "type": "object",
+        "required": [
+          "phone",
+          "code",
+          "newMpin"
+        ],
+        "properties": {
+          "phone": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "newMpin": {
+            "type": "string"
+          }
+        }
+      },
+      "AuthResponse": {
+        "type": "object",
+        "properties": {
+          "accessToken": {
+            "type": "string"
+          },
+          "refreshToken": {
+            "type": "string"
+          },
+          "user": {
+            "$ref": "#/components/schemas/User"
+          }
+        }
+      },
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "role": {
+            "type": "string"
+          }
+        }
+      },
+      "Ad": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "targetStates": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "language": {
+            "type": "string"
+          },
+          "payPerInfluencer": {
+            "type": "number"
+          },
+          "status": {
+            "type": "string"
+          }
+        }
+      },
+      "AdCreateRequest": {
+        "type": "object",
+        "required": [
+          "title",
+          "description"
+        ],
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "targetStates": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "language": {
+            "type": "string"
+          },
+          "payPerInfluencer": {
+            "type": "number"
+          }
+        }
+      },
+      "AdUpdateRequest": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "targetStates": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "language": {
+            "type": "string"
+          },
+          "payPerInfluencer": {
+            "type": "number"
+          },
+          "status": {
+            "type": "string"
+          }
+        }
+      },
+      "AdsFeedRequest": {
+        "type": "object",
+        "properties": {
+          "language": {
+            "type": "string"
+          },
+          "states": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "categories": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "default": 1
+          },
+          "limit": {
+            "type": "integer",
+            "default": 20
+          }
+        }
+      },
+      "PaymentInitiateRequest": {
+        "type": "object",
+        "required": [
+          "amount",
+          "currency"
+        ],
+        "properties": {
+          "amount": {
+            "type": "number"
+          },
+          "currency": {
+            "type": "string",
+            "example": "INR"
+          }
+        }
+      },
+      "PaymentInitiateResponse": {
+        "type": "object",
+        "properties": {
+          "orderId": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "keyId": {
+            "type": "string"
+          }
+        }
+      },
+      "PaymentConfirmRequest": {
+        "type": "object",
+        "required": [
+          "orderId",
+          "paymentId",
+          "signature"
+        ],
+        "properties": {
+          "orderId": {
+            "type": "string"
+          },
+          "paymentId": {
+            "type": "string"
+          },
+          "signature": {
+            "type": "string"
+          }
+        }
+      },
+      "Application": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "adId": {
+            "type": "integer"
+          },
+          "influencerId": {
+            "type": "integer"
+          },
+          "status": {
+            "type": "string"
+          },
+          "submission": {
+            "type": "object"
+          }
+        }
+      },
+      "ApplicationApplyRequest": {
+        "type": "object",
+        "properties": {
+          "state": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "DeliverableSubmitRequest": {
+        "type": "object",
+        "required": [
+          "creativeUrl"
+        ],
+        "properties": {
+          "creativeUrl": {
+            "type": "string"
+          }
+        }
+      },
+      "Payout": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "status": {
+            "type": "string"
+          },
+          "grossAmount": {
+            "type": "number"
+          },
+          "netAmount": {
+            "type": "number"
+          }
+        }
+      },
+      "ApproveAndPayoutResponse": {
+        "type": "object",
+        "properties": {
+          "app": {
+            "$ref": "#/components/schemas/Application"
+          },
+          "payout": {
+            "$ref": "#/components/schemas/Payout"
+          }
+        }
+      },
+      "InfluencerMe": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "idUlid": {
+            "type": "string"
+          },
+          "handle": {
+            "type": "string"
+          },
+          "profilePicUrl": {
+            "type": "string"
+          },
+          "verificationStatus": {
+            "type": "string"
+          },
+          "badges": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "InfluencerUpdateRequest": {
+        "type": "object",
+        "properties": {
+          "handle": {
+            "type": "string"
+          },
+          "bio": {
+            "type": "string"
+          },
+          "countryId": {
+            "type": "integer"
+          },
+          "stateId": {
+            "type": "integer"
+          },
+          "stateIds": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          },
+          "districtId": {
+            "type": "integer"
+          },
+          "addressLine1": {
+            "type": "string"
+          },
+          "addressLine2": {
+            "type": "string"
+          },
+          "postalCode": {
+            "type": "string"
+          }
+        }
+      },
+      "InfluencerPricing": {
+        "type": "object",
+        "properties": {
+          "adPricing": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "number"
+            }
+          },
+          "negotiable": {
+            "type": "boolean"
+          },
+          "currency": {
+            "type": "string",
+            "example": "INR"
+          },
+          "notes": {
+            "type": "string"
+          }
+        }
+      },
+      "KycInput": {
+        "type": "object",
+        "properties": {
+          "fullName": {
+            "type": "string"
+          },
+          "dob": {
+            "type": "string"
+          },
+          "pan": {
+            "type": "string"
+          },
+          "addressLine1": {
+            "type": "string"
+          },
+          "addressLine2": {
+            "type": "string"
+          },
+          "postalCode": {
+            "type": "string"
+          },
+          "city": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "country": {
+            "type": "string"
+          },
+          "documents": {
+            "type": "object"
+          },
+          "consent": {
+            "type": "boolean"
+          }
+        }
+      },
+      "KycOutput": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "kyc": {
+            "type": "object"
+          },
+          "meta": {
+            "type": "object"
+          }
+        }
+      },
+      "PaymentMethod": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "bank",
+              "upi"
+            ]
+          },
+          "accountHolderName": {
+            "type": "string"
+          },
+          "bankName": {
+            "type": "string"
+          },
+          "bankIfsc": {
+            "type": "string"
+          },
+          "bankAccountNumberMasked": {
+            "type": "string"
+          },
+          "upiIdMasked": {
+            "type": "string"
+          },
+          "isPreferred": {
+            "type": "boolean"
+          },
+          "status": {
+            "type": "string"
+          }
+        }
+      },
+      "PaymentMethodInput": {
+        "type": "object",
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "bank",
+              "upi"
+            ]
+          },
+          "accountHolderName": {
+            "type": "string"
+          },
+          "bankName": {
+            "type": "string"
+          },
+          "bankIfsc": {
+            "type": "string"
+          },
+          "bankAccountNumber": {
+            "type": "string"
+          },
+          "upiId": {
+            "type": "string"
+          },
+          "isPreferred": {
+            "type": "boolean"
+          }
+        }
+      },
+      "Post": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "idUlid": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "caption": {
+            "type": "string"
+          },
+          "categories": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "language": {
+            "type": "string"
+          },
+          "states": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "media": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MediaEntry"
+            }
+          }
+        }
+      },
+      "CreatePostRequest": {
+        "type": "object",
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "ad",
+              "external",
+              "portfolio"
+            ]
+          },
+          "caption": {
+            "type": "string"
+          },
+          "categories": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "language": {
+            "type": "string"
+          },
+          "states": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "media": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MediaEntry"
+            }
+          },
+          "adId": {
+            "type": "integer"
+          }
+        }
+      },
+      "MediaEntry": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "thumbnailUrl": {
+            "type": "string"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "guid": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        }
+      },
+      "InfluencerAdMediaItem": {
+        "type": "object",
+        "properties": {
+          "ulid": {
+            "type": "string"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "guid": {
+            "type": "string"
+          },
+          "playbackUrl": {
+            "type": "string"
+          },
+          "thumbnailUrl": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "sizeBytes": {
+            "type": "integer"
+          },
+          "durationSec": {
+            "type": "number"
+          },
+          "post": {
+            "type": "object"
+          },
+          "influencer": {
+            "type": "object"
+          },
+          "ad": {
+            "type": "object"
+          }
+        }
+      },
+      "R2SignRequest": {
+        "type": "object",
+        "required": [
+          "filename",
+          "contentType"
+        ],
+        "properties": {
+          "filename": {
+            "type": "string"
+          },
+          "contentType": {
+            "type": "string"
+          },
+          "folder": {
+            "type": "string"
+          }
+        }
+      },
+      "R2SignResponse": {
+        "type": "object",
+        "properties": {
+          "uploadUrl": {
+            "type": "string"
+          },
+          "publicUrl": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "headers": {
+            "type": "object"
+          }
+        }
+      },
+      "BunnyCreateResponse": {
+        "type": "object",
+        "properties": {
+          "guid": {
+            "type": "string"
+          },
+          "uploadUrl": {
+            "type": "string"
+          },
+          "playbackUrl": {
+            "type": "string"
+          }
+        }
+      },
+      "MediaUploadResponse": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "sizeMB": {
+            "type": "number"
+          }
+        }
+      },
+      "Category": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "purpose": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        }
+      },
+      "Country": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "iso2": {
+            "type": "string"
+          }
+        }
+      },
+      "State": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "countryId": {
+            "type": "integer"
+          }
+        }
+      },
+      "District": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "stateId": {
+            "type": "integer"
+          }
+        }
+      },
+      "Language": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "DiscoveryInfluencer": {
+        "type": "object",
+        "properties": {
+          "idUlid": {
+            "type": "string"
+          },
+          "handle": {
+            "type": "string"
+          },
+          "profilePicUrl": {
+            "type": "string"
+          },
+          "score": {
+            "type": "number"
+          }
         }
       }
     }

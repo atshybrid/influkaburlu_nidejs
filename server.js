@@ -4,7 +4,14 @@ const cors = require('cors');
 const db = require('./src/models');
 const routes = require('./src/routes');
 const swaggerUi = require('swagger-ui-express');
-const openapi = require('./src/openapi.json');
+let openapi;
+try {
+  openapi = require('./src/openapi.json');
+} catch (e) {
+  console.warn('Warning: openapi.json failed to load. Falling back to minimal spec. Error:', e.message);
+  openapi = { openapi: '3.0.3', info: { title: 'Kaburlu Backend API', version: '1.0.0' }, servers: [{ url: `http://localhost:${process.env.PORT||4000}` }], paths: {} };
+}
+const fileUpload = require('express-fileupload');
 
 const app = express();
 // Enable CORS for local dev and Swagger
@@ -16,6 +23,12 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+// Enable multipart uploads for R2 image/file upload API
+app.use(fileUpload({
+  useTempFiles: true,
+  tempFileDir: require('os').tmpdir(),
+  limits: { fileSize: (parseInt(process.env.MEDIA_MAX_VIDEO_MB || '100', 10)) * 1024 * 1024 }
+}));
 
 app.use('/api', routes);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(openapi));
