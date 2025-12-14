@@ -16,6 +16,7 @@ const bunnyCtrl = require('../controllers/bunnyController');
 const kycCtrl = require('../controllers/kycController');
 const payCtrl = require('../controllers/paymentController');
 const requireAuth = require('../middleware/auth');
+const influencerCtrl = require('../controllers/influencerController');
 
 router.use('/auth', auth);
 router.use('/ads', ads);
@@ -29,6 +30,9 @@ router.use('/brands', brands);
 router.use('/uploads', uploads);
 router.use('/discovery', discovery);
 router.use('/categories', categories);
+
+// Public landing page
+router.get('/public/influencers', influencerCtrl.publicLandingList);
 
 // Bunny admin/public
 router.get('/admin/bunny/videos', requireAuth(['admin']), bunnyCtrl.adminListVideos);

@@ -1,7 +1,87 @@
-const { Influencer, InfluencerPricing, User, Country, State, District, InfluencerPaymentMethod } = require('../models');
+const { Influencer, InfluencerPricing, User, Country, State, District, InfluencerPaymentMethod, InfluencerAdMedia } = require('../models');
+const { Op } = require('sequelize');
 const { uploadBuffer } = require('../utils/r2');
 const fs = require('fs');
 const crypto = require('crypto');
+
+function pickBadgeName(infl) {
+  const badges = Array.isArray(infl?.badges) ? infl.badges : [];
+  const first = badges.find(b => typeof b === 'string' && b.trim()) || null;
+  if (first) return first;
+  const status = infl?.verificationStatus;
+  if (status && status !== 'none') return status;
+  return null;
+}
+
+// Public landing page: list influencers with basic details + their videos
+exports.publicLandingList = async (req, res) => {
+  try {
+    const limit = Math.min(Math.max(parseInt(req.query.limit || '30', 10) || 30, 1), 100);
+    const offset = Math.max(parseInt(req.query.offset || '0', 10) || 0, 0);
+
+    const total = await Influencer.count();
+    const influencers = await Influencer.findAll({
+      include: [{ model: User, attributes: ['name'] }],
+      order: [['createdAt', 'DESC']],
+      limit,
+      offset,
+    });
+
+    const influencerIds = influencers.map(i => i.id);
+    const mediaRows = influencerIds.length
+      ? await InfluencerAdMedia.findAll({
+          where: {
+            influencerId: { [Op.in]: influencerIds },
+            provider: 'bunny',
+          },
+          order: [['createdAt', 'DESC']],
+        })
+      : [];
+
+    const videosByInfluencerId = new Map();
+    for (const row of mediaRows) {
+      const arr = videosByInfluencerId.get(row.influencerId) || [];
+      arr.push(row);
+      videosByInfluencerId.set(row.influencerId, arr);
+    }
+
+    const items = influencers.map(infl => {
+      const userName = infl.User?.name || null;
+      const handle = infl.handle || null;
+      const handleDisplay = handle ? `@${handle}` : null;
+      const badgeName = pickBadgeName(infl);
+      const rows = videosByInfluencerId.get(infl.id) || [];
+      const videos = rows
+        .filter(r => !!r.playbackUrl)
+        .map(r => ({
+          guid: r.guid,
+          playbackUrl: r.playbackUrl,
+          thumbnailUrl: r.thumbnailUrl || null,
+          status: r.status,
+          createdAt: r.createdAt,
+        }));
+
+      const best = videos.find(v => v.status === 'ready') || videos[0] || null;
+
+      return {
+        idUlid: infl.ulid,
+        name: userName,
+        handle,
+        handleDisplay,
+        profilePicUrl: infl.profilePicUrl || null,
+        verificationStatus: infl.verificationStatus || 'none',
+        badges: Array.isArray(infl.badges) ? infl.badges : [],
+        badgeName,
+        bestVideo: best,
+        videos,
+      };
+    });
+
+    return res.json({ total, limit, offset, items });
+  } catch (err) {
+    return res.status(500).json({ error: 'server_error', details: err.message });
+  }
+};
 
 exports.me = async (req, res) => {
   const infl = await Influencer.findOne({ where: { userId: req.user.id } });

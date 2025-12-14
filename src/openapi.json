@@ -57,6 +57,128 @@
     }
   ],
   "paths": {
+    "/api/public/influencers": {
+      "get": {
+        "tags": [
+          "Influencers"
+        ],
+        "summary": "Public landing: list influencers with videos",
+        "description": "Returns influencers with basic profile info (name, handle, profilePicUrl, badges) and their Bunny videos for landing pages.",
+        "security": [],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 30
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "total": { "type": "integer" },
+                    "limit": { "type": "integer" },
+                    "offset": { "type": "integer" },
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "idUlid": { "type": "string" },
+                          "name": { "type": ["string", "null"] },
+                          "handle": { "type": ["string", "null"] },
+                          "handleDisplay": { "type": ["string", "null"] },
+                          "profilePicUrl": { "type": ["string", "null"] },
+                          "verificationStatus": { "type": "string" },
+                          "badges": { "type": "array", "items": { "type": "string" } },
+                          "badgeName": { "type": ["string", "null"] },
+                          "bestVideo": {
+                            "type": ["object", "null"],
+                            "properties": {
+                              "guid": { "type": "string" },
+                              "playbackUrl": { "type": "string" },
+                              "thumbnailUrl": { "type": ["string", "null"] },
+                              "status": { "type": "string" },
+                              "createdAt": { "type": "string", "format": "date-time" }
+                            }
+                          },
+                          "videos": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "guid": { "type": "string" },
+                                "playbackUrl": { "type": "string" },
+                                "thumbnailUrl": { "type": ["string", "null"] },
+                                "status": { "type": "string" },
+                                "createdAt": { "type": "string", "format": "date-time" }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "total": 2,
+                  "limit": 30,
+                  "offset": 0,
+                  "items": [
+                    {
+                      "idUlid": "01JFDZQ1Q9M8Y9S3B8E4X0E3GJ",
+                      "name": "Asha",
+                      "handle": "asha_creates",
+                      "handleDisplay": "@asha_creates",
+                      "profilePicUrl": "https://cdn.example.com/uploads/123/profile.jpg",
+                      "verificationStatus": "verified",
+                      "badges": ["Top Creator"],
+                      "badgeName": "Top Creator",
+                      "bestVideo": {
+                        "guid": "bunny-guid-123",
+                        "playbackUrl": "https://iframe.mediadelivery.net/embed/12345/bunny-guid-123",
+                        "thumbnailUrl": "https://vz-123.b-cdn.net/thumbnail.jpg",
+                        "status": "ready",
+                        "createdAt": "2025-12-15T10:00:00.000Z"
+                      },
+                      "videos": [
+                        {
+                          "guid": "bunny-guid-123",
+                          "playbackUrl": "https://iframe.mediadelivery.net/embed/12345/bunny-guid-123",
+                          "thumbnailUrl": "https://vz-123.b-cdn.net/thumbnail.jpg",
+                          "status": "ready",
+                          "createdAt": "2025-12-15T10:00:00.000Z"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/health": {
       "get": {
         "tags": [
