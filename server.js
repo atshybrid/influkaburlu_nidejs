@@ -33,6 +33,29 @@ app.use(fileUpload({
 app.use('/api', routes);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(openapi));
 
+// Centralized error handler (ensures API errors return JSON, not HTML)
+// This is especially important for multipart/busboy/multer errors like "Unexpected end of form".
+app.use((err, req, res, next) => {
+  try {
+    if (!err) return next();
+    const isApi = String(req.originalUrl || '').startsWith('/api');
+    if (!isApi) {
+      return next(err);
+    }
+    const msg = err.message || 'Internal Server Error';
+    // Common multipart parsing errors
+    if (/Unexpected end of form/i.test(msg)) {
+      return res.status(400).json({ error: 'multipart_incomplete', details: msg });
+    }
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(413).json({ error: 'file_too_large', details: msg });
+    }
+    return res.status(err.statusCode || err.status || 500).json({ error: 'server_error', details: msg });
+  } catch (_) {
+    return res.status(500).json({ error: 'server_error' });
+  }
+});
+
 // Simple health endpoint for connectivity checks
 app.get('/health', (req, res) => {
   res.json({ ok: true, time: new Date().toISOString() });
