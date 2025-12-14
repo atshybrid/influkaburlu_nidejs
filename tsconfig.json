@@ -12,7 +12,6 @@
     "strict": false,
     "skipLibCheck": true,
     "resolveJsonModule": true,
-    "types": ["node"],
     "noEmitOnError": true
   },
   "include": [
