@@ -260,9 +260,6 @@ exports.createPostVideoMe = async (req, res) => {
     const tempPath = req.file?.path;
     if (req.file) {
       try {
-        if (!axios) {
-          try { axios = require('axios'); } catch (e) { return res.status(500).json({ error: 'axios_not_installed' }); }
-        }
         // Prefer disk path streaming to set Content-Length correctly
         const filePath = tempPath;
         let stats;
@@ -276,22 +273,48 @@ exports.createPostVideoMe = async (req, res) => {
           req.file.path = tmp;
         }
         const stream = fs.createReadStream(req.file.path);
-        const up = await axios.put(
-          `https://video.bunnycdn.com/library/${libraryId}/videos/${json.guid}`,
-          stream,
-          {
-            headers: {
-              AccessKey: apiKey,
-              'Content-Type': 'application/octet-stream',
-              'Content-Length': stats?.size || req.file.size || undefined
-            },
-            maxBodyLength: Infinity,
-            maxContentLength: Infinity,
-            timeout: 0
+        let statusCode;
+        try {
+          if (!axios) {
+            try { axios = require('axios'); } catch (e) { axios = null; }
           }
-        );
-        if (up.status < 200 || up.status >= 300) {
-          return res.status(502).json({ error: 'bunny_upload_failed_status', status: up.status });
+          if (axios) {
+            const up = await axios.put(
+              `https://video.bunnycdn.com/library/${libraryId}/videos/${json.guid}`,
+              stream,
+              {
+                headers: {
+                  AccessKey: apiKey,
+                  'Content-Type': 'application/octet-stream',
+                  'Content-Length': stats?.size || req.file.size || undefined
+                },
+                maxBodyLength: Infinity,
+                maxContentLength: Infinity,
+                timeout: 0
+              }
+            );
+            statusCode = up.status;
+          } else {
+            // Fallback to node-fetch if axios isn't available
+            const up = await fetch(
+              `https://video.bunnycdn.com/library/${libraryId}/videos/${json.guid}`,
+              {
+                method: 'PUT',
+                headers: {
+                  AccessKey: apiKey,
+                  'Content-Type': 'application/octet-stream',
+                  'Content-Length': stats?.size || req.file.size || undefined
+                },
+                body: stream
+              }
+            );
+            statusCode = up.status;
+          }
+        } catch (uploadErr) {
+          return res.status(502).json({ error: 'bunny_upload_error', details: uploadErr.message || String(uploadErr) });
+        }
+        if (statusCode < 200 || statusCode >= 300) {
+          return res.status(502).json({ error: 'bunny_upload_failed_status', status: statusCode });
         }
         uploadedOk = true;
         // Update media row status and size
