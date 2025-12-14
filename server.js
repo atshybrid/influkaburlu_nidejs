@@ -45,7 +45,11 @@ app.use((err, req, res, next) => {
     const msg = err.message || 'Internal Server Error';
     // Common multipart parsing errors
     if (/Unexpected end of form/i.test(msg)) {
-      return res.status(400).json({ error: 'multipart_incomplete', details: msg });
+      return res.status(400).json({
+        error: 'multipart_incomplete',
+        details: msg,
+        hint: 'Your multipart body is incomplete. If using curl, DO NOT set Content-Type manually (it must include a boundary). On Windows PowerShell use curl.exe and -F fields; avoid filenames with # or spaces while testing.'
+      });
     }
     if (err.code === 'LIMIT_FILE_SIZE') {
       return res.status(413).json({ error: 'file_too_large', details: msg });
