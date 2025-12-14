@@ -33,7 +33,7 @@ exports.createAd = async (req, res) => {
 exports.listAds = async (req, res) => {
   try {
     const { state, language, page=1, limit=20 } = req.query;
-    const filter = { status: 'open' };
+    const filter: any = { status: 'open' };
     if (state) filter.targetStates = { [Op.contains]: [state] };
     if (language) filter.language = language;
     const ads = await Ad.findAll({ where: filter, limit: Number(limit), offset: (page-1)*limit, order: [['createdAt','DESC']] });
@@ -49,7 +49,7 @@ exports.updateAd = async (req, res) => {
     const brand = await Brand.findOne({ where: { id: ad.brandId } });
     if (!brand || brand.userId !== req.user.id) return res.status(403).json({ error: 'Forbidden' });
     const allowed = ['title','description','targetStates','language','payPerInfluencer','categories','deliverables','briefUrl','mediaRefs','timeline','budget'];
-    const updates = {};
+    const updates: any = {};
     for (const key of allowed) if (key in req.body) updates[key] = req.body[key];
     await ad.update(updates);
     res.json({ ...ad.toJSON(), idUlid: ad.ulid });
@@ -72,11 +72,11 @@ exports.feed = async (req, res) => {
       offset = 0,
     } = req.body || {};
 
-    const where = {};
+    const where: any = {};
     if (onlyActive) where.status = 'open';
 
     if (budgetMin != null || budgetMax != null) {
-      where.budget = {};
+      where.budget = {} as any;
       if (budgetMin != null) where.budget[Op.gte] = Number(budgetMin);
       if (budgetMax != null) where.budget[Op.lte] = Number(budgetMax);
     }

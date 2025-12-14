@@ -34,7 +34,7 @@ async function brandDashboard(req, res) {
 
     const timeline = applications
       .map(a => ({ date: a.updatedAt, label: a.status }))
-      .sort((x, y) => new Date(y.date) - new Date(x.date))
+      .sort((x, y) => new Date(y.date).getTime() - new Date(x.date).getTime())
       .slice(0, 15);
 
     const notifications = [];

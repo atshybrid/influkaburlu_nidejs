@@ -17,11 +17,11 @@ exports.listInfluencerAdMedia = async (req, res) => {
       page = 1,
     } = req.query;
 
-    const where = { provider: 'bunny' };
+    const where: any = { provider: 'bunny' };
     if (status) where.status = status;
 
-    const include = [
-        { model: Post, attributes: ['id', 'ulid', 'caption', 'language', 'categories', 'states', 'type', 'status'], where: {} },
+    const include: any = [
+        { model: Post, attributes: ['id', 'ulid', 'caption', 'language', 'categories', 'states', 'type', 'status'], where: {} as any },
         { model: Influencer, attributes: ['id', 'ulid', 'handle'] },
         { model: Ad, attributes: ['id', 'ulid'], required: false },
       ];

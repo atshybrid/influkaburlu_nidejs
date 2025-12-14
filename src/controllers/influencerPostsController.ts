@@ -19,7 +19,7 @@ exports.influencerFeed = async (req, res) => {
     const infl = await Influencer.findByPk(id);
     if (!infl) return res.status(404).json({ error: 'influencer_not_found' });
     const { category, state, language, page = 1, limit = 20 } = req.query;
-    const where = { influencerId: infl.id, status: 'active' };
+    const where: any = { influencerId: infl.id, status: 'active' };
     if (language) where.language = language;
     if (state) where.states = { [Op.contains]: [state] };
     if (category) where.categories = { [Op.contains]: [category] };
@@ -32,7 +32,7 @@ exports.influencerFeed = async (req, res) => {
 exports.publicAds = async (req, res) => {
   try {
     const { state, language, category, page = 1, limit = 20 } = req.query;
-    const where = { status: 'active' };
+    const where: any = { status: 'active' };
     // Include both auto-created ad posts and influencer external posts tied to ads
     where.type = { [Op.in]: ['ad', 'external'] };
 

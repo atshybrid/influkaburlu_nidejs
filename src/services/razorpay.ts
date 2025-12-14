@@ -7,8 +7,7 @@ function createOrder({ amount, currency = 'INR', notes = {} }) {
 }
 
 function verifySignature({ orderId, paymentId, signature }) {
-  const secret = process.env.RAZORPAY_SECRET || '';
-  const secret = process.env.RAZORPAY_SECRET || process.env.RAZORPAY_KEY_SECRET;
+  const secret = process.env.RAZORPAY_SECRET || process.env.RAZORPAY_KEY_SECRET || '';
   const payload = orderId + '|' + paymentId;
   const expected = crypto.createHmac('sha256', secret).update(payload).digest('hex');
   return expected === signature;

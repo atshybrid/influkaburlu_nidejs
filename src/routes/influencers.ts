@@ -4,6 +4,8 @@ const auth = require('../middleware/auth');
 const multer = require('multer');
 const os = require('os');
 const path = require('path');
+const multipartBoundaryFix = require('../middleware/multipartBoundaryFix');
+const fileUpload = require('../middleware/fileUpload');
 const storage = multer.diskStorage({
 	destination: (req, file, cb) => cb(null, os.tmpdir()),
 	filename: (req, file, cb) => cb(null, Date.now() + '-' + file.originalname.replace(/\s+/g, '_'))
@@ -13,7 +15,7 @@ router.get('/me', auth(), ctrl.me);
 router.put('/me', auth(['influencer']), ctrl.update);
 router.get('/dashboard', auth(['influencer']), ctrl.dashboard);
 // Update profile picture (multipart or JSON imageUrl)
-router.put('/me/profile-pic', auth(['influencer']), ctrl.updateProfilePic);
+router.put('/me/profile-pic', auth(['influencer']), fileUpload, ctrl.updateProfilePic);
 // Pricing (get/update)
 router.get('/me/pricing', auth(['influencer']), ctrl.getPricing);
 router.put('/me/pricing', auth(['influencer']), ctrl.updatePricing);
@@ -35,5 +37,8 @@ router.get('/ads', require('../controllers/influencerPostsController').publicAds
 // Public: canonical influencer ad media (videos)
 router.get('/ads/media', require('../controllers/mediaController').listInfluencerAdMedia);
 // Self ad post video via ULID
-router.post('/me/ads/video', auth(['influencer']), upload.single('file'), require('../controllers/postsController').createPostVideoMe);
+// Redesigned flow (preferred): init (JSON) + upload (PUT octet-stream), avoids multipart boundary issues on Windows/PowerShell
+router.post('/me/ads/video/init', auth(['influencer']), require('../controllers/postsController').initAdVideoMe);
+router.put('/me/ads/video/:guid/upload', auth(['influencer']), require('../controllers/postsController').uploadAdVideoMe);
+router.post('/me/ads/video', auth(['influencer']), multipartBoundaryFix, upload.single('file'), require('../controllers/postsController').createPostVideoMe);
 module.exports = router;

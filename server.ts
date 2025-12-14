@@ -11,7 +11,6 @@ try {
   console.warn('Warning: openapi.json failed to load. Falling back to minimal spec. Error:', e.message);
   openapi = { openapi: '3.0.3', info: { title: 'Kaburlu Backend API', version: '1.0.0' }, servers: [{ url: `http://localhost:${process.env.PORT||4000}` }], paths: {} };
 }
-const fileUpload = require('express-fileupload');
 
 const app = express();
 // Enable CORS for local dev and Swagger
@@ -23,12 +22,10 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-// Enable multipart uploads for R2 image/file upload API
-app.use(fileUpload({
-  useTempFiles: true,
-  tempFileDir: require('os').tmpdir(),
-  limits: { fileSize: (parseInt(process.env.MEDIA_MAX_VIDEO_MB || '100', 10)) * 1024 * 1024 }
-}));
+// NOTE: Do NOT register express-fileupload globally.
+// We also use multer for some endpoints (e.g. influencer video upload), and double-parsing
+// multipart bodies will frequently cause "Unexpected end of form".
+// express-fileupload is mounted only on the specific routes that need req.files.
 
 app.use('/api', routes);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(openapi));

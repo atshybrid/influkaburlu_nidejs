@@ -7,6 +7,7 @@ Notes:
   - Without TOKEN, only public/health checks run.
 */
 
+// @ts-nocheck
 const fetch = require('node-fetch');
 
 const BASE = process.env.BASE_URL || `http://localhost:${process.env.PORT || 4000}`;

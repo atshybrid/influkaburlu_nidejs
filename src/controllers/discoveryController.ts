@@ -12,11 +12,11 @@ function computeScore(infl, payoutAgg) {
 exports.searchInfluencers = async (req, res) => {
   try {
     const { budgetMin, budgetMax, categories, language, state, page = 1, limit = 20 } = req.query;
-    const where = {};
+    const where: any = {};
     if (language) where.languages = { [Op.contains]: [language] };
     if (state) where.states = { [Op.contains]: [state] };
     // Category filter via join
-    let include = [];
+    let include: any[] = [];
     if (categories) {
       const list = Array.isArray(categories) ? categories : String(categories).split(',').map(s => s.trim()).filter(Boolean);
       include.push({ model: Category, through: { attributes: [] }, where: { name: { [Op.in]: list } }, required: true });

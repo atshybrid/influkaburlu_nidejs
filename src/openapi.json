@@ -1440,13 +1440,137 @@
         }
       }
     },
+    "/api/influencers/me/ads/video/init": {
+      "post": {
+        "tags": [
+          "Influencers"
+        ],
+        "summary": "Init Bunny video upload for own ad post (preferred)",
+        "description": "Step 1/2. Creates a Bunny Stream video record and attaches it to the influencer's ad post. Returns a server upload endpoint that accepts raw bytes (no multipart).",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "postUlid": { "type": "string" },
+                  "title": { "type": "string" },
+                  "description": { "type": "string" },
+                  "caption": { "type": "string" },
+                  "thumbnailUrl": { "type": "string" },
+                  "category": { "type": "string" },
+                  "categoryCode": { "type": "string" }
+                }
+              },
+              "example": {
+                "title": "My Ad Video",
+                "caption": "Short caption",
+                "category": "1"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "guid": { "type": "string" },
+                    "playbackUrl": { "type": "string" },
+                    "postIdUlid": { "type": "string" },
+                    "mediaUlid": { "type": "string" },
+                    "uploadEndpoint": { "type": "string" },
+                    "maxBytes": { "type": "integer" }
+                  }
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Created (a new ad post was created)"
+          }
+        }
+      }
+    },
+    "/api/influencers/me/ads/video/{guid}/upload": {
+      "put": {
+        "tags": [
+          "Influencers"
+        ],
+        "summary": "Upload video bytes to Bunny via server (preferred)",
+        "description": "Step 2/2. Uploads raw bytes (application/octet-stream) to the server, which streams them to Bunny Stream. This avoids multipart parsing issues on Windows/PowerShell.\n\nExample (PowerShell):\n- `curl.exe -X PUT -H \"Authorization: Bearer <TOKEN>\" -H \"Content-Type: application/octet-stream\" --upload-file \"ad-video.mp4\" http://localhost:4000/api/influencers/me/ads/video/<GUID>/upload`",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "guid",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "Content-Length",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "integer" },
+            "description": "Required for streaming uploads. Most clients (curl --upload-file) set this automatically."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/octet-stream": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "guid": { "type": "string" },
+                    "status": { "type": "string" },
+                    "playbackUrl": { "type": "string" },
+                    "sizeBytes": { "type": "integer" },
+                    "bunnyMetaUpdated": { "type": "boolean" }
+                  }
+                }
+              }
+            }
+          },
+          "404": { "description": "Not found (video_not_initialized)" },
+          "411": { "description": "Content-Length required" },
+          "413": { "description": "File too large" },
+          "502": { "description": "Upstream Bunny error" }
+        }
+      }
+    },
     "/api/influencers/me/ads/video": {
       "post": {
         "tags": [
           "Influencers"
         ],
         "summary": "Upload Bunny video for own ad post",
-        "description": "Uploads a video file to Bunny Stream and attaches it to the influencer's ad post.\n\nImportant (Windows/PowerShell): use `curl.exe` and DO NOT manually set the `Content-Type: multipart/form-data` header (curl must include a boundary). Filenames containing `#` or spaces can also break shell commands; rename the file (e.g. `ad-video.mp4`) while testing.",
+        "description": "Uploads a video file to Bunny Stream and attaches it to the influencer's ad post (single-call multipart).\n\nRecommended (more reliable): use the 2-step flow: `POST /api/influencers/me/ads/video/init` then `PUT /api/influencers/me/ads/video/{guid}/upload` with `application/octet-stream` (no multipart).\n\nImportant (Windows/PowerShell): use `curl.exe` and DO NOT manually set the `Content-Type: multipart/form-data` header (curl must include a boundary). The server attempts to recover missing boundary when possible, but correct clients are still recommended. Filenames containing `#` or spaces can also break shell commands; rename the file (e.g. `ad-video.mp4`) while testing.",
         "security": [
           {
             "bearerAuth": []

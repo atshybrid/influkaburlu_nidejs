@@ -74,7 +74,9 @@ function extractIndexDirectRoutes(indexJsText) {
 }
 
 function audit({ openapiPath, apiPrefix = '/api' }) {
-  const indexPath = path.join(__dirname, '..', 'src', 'routes', 'index.js');
+  const indexTs = path.join(__dirname, '..', 'src', 'routes', 'index.ts');
+  const indexJs = path.join(__dirname, '..', 'src', 'routes', 'index.js');
+  const indexPath = fs.existsSync(indexTs) ? indexTs : indexJs;
   const indexText = fs.readFileSync(indexPath, 'utf8');
 
   const openapiRaw = fs.readFileSync(openapiPath, 'utf8');
@@ -94,7 +96,7 @@ function audit({ openapiPath, apiPrefix = '/api' }) {
     discovered.push(...routes);
   }
 
-  // Direct routes in src/routes/index.js
+  // Direct routes in src/routes/index
   for (const r of extractIndexDirectRoutes(indexText)) {
     discovered.push({ method: r.method, path: normalizePath(`${apiPrefix}${r.path}`) });
   }

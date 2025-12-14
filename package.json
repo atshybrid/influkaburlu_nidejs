@@ -1,19 +1,20 @@
 {
   "name": "kaburlu-backend-v2",
   "version": "1.0.0",
-  "main": "server.js",
+  "main": "dist/server.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js",
-    "seed": "node seed.js",
-    "build": "echo Building kaburlu-backend-v2 (no compile step)",
-    "openapi:generate": "node scripts/generate-openapi.js",
-    "openapi:audit": "node scripts/openapi-audit.js",
-    "smoke": "node scripts/smoke-test.js",
-    "backfill:media": "node src/scripts/backfillInfluencerAdMedia.js",
-    "update:media-status": "node src/scripts/updateInfluencerAdMediaStatus.js",
-    "backfill:ad-pricing": "node src/scripts/backfillAdPricing.js",
-    "backfill:pricing-table": "node src/scripts/backfillInfluencerPricing.js"
+    "build": "tsc -p tsconfig.json && node dist/scripts/copy-assets.js",
+    "prestart": "npm run build",
+    "start": "node dist/server.js",
+    "dev": "nodemon --watch src --watch scripts --watch server.ts --ext ts,json --exec ts-node server.ts",
+    "seed": "ts-node seed.ts",
+    "openapi:generate": "ts-node scripts/generate-openapi.ts",
+    "openapi:audit": "ts-node scripts/openapi-audit.ts",
+    "smoke": "ts-node scripts/smoke-test.ts",
+    "backfill:media": "ts-node src/scripts/backfillInfluencerAdMedia.ts",
+    "update:media-status": "ts-node src/scripts/updateInfluencerAdMediaStatus.ts",
+    "backfill:ad-pricing": "ts-node src/scripts/backfillAdPricing.ts",
+    "backfill:pricing-table": "ts-node src/scripts/backfillInfluencerPricing.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.948.0",
@@ -39,7 +40,18 @@
     "uuid": "^9.0.0"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/express-fileupload": "^1.5.1",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/multer": "^2.0.0",
+    "@types/node": "^25.0.2",
+    "@types/node-fetch": "^2.6.13",
+    "@types/swagger-ui-express": "^4.1.8",
     "nodemon": "^2.0.22",
-    "sequelize-cli": "^6.6.3"
+    "sequelize-cli": "^6.6.3",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
   }
 }

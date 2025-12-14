@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const ctrl = require('../controllers/locationsController');
 const auth = require('../middleware/auth');
+const fileUpload = require('../middleware/fileUpload');
 
 router.get('/countries', ctrl.countries);
 router.get('/states', ctrl.states);
@@ -15,7 +16,7 @@ router.get('/languages', async (req, res) => {
 });
 
 // Bulk upload (CSV) restricted to admin/superadmin
-router.post('/bulk/states', auth(['admin','superadmin']), ctrl.bulkStates);
-router.post('/bulk/districts', auth(['admin','superadmin']), ctrl.bulkDistricts);
+router.post('/bulk/states', auth(['admin','superadmin']), fileUpload, ctrl.bulkStates);
+router.post('/bulk/districts', auth(['admin','superadmin']), fileUpload, ctrl.bulkDistricts);
 
 module.exports = router;
