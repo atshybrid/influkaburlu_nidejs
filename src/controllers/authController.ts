@@ -13,9 +13,35 @@ function rateLimitRefresh(key) {
   entry.count += 1;
   return { allowed: true };
 }
-const { User, Influencer, Brand, OtpRequest, RefreshToken } = require('../models');
+const { User, Influencer, Brand, OtpRequest, RefreshToken, InfluencerKyc, InfluencerPaymentMethod } = require('../models');
 function hashToken(raw) {
   return crypto.createHash('sha256').update(raw).digest('hex');
+}
+
+function maskAccount(num) {
+  if (!num) return null;
+  const n = String(num);
+  return n.length <= 4 ? '****' + n : '****' + n.slice(-4);
+}
+
+function maskUpi(id) {
+  if (!id) return null;
+  const parts = String(id).split('@');
+  const name = parts[0] || '';
+  const bank = parts[1] || '';
+  const maskedName = name.length <= 2 ? name : name[0] + '***' + name.slice(-1);
+  return maskedName + (bank ? '@' + bank : '');
+}
+
+function isInfluencerKycComplete(kyc) {
+  if (!kyc) return false;
+  const required = ['fullName', 'dob', 'pan', 'addressLine1', 'postalCode', 'city', 'state', 'country'];
+  for (const f of required) {
+    const v = kyc[f];
+    if (!v || (typeof v === 'string' && !v.trim())) return false;
+  }
+  if (!kyc.consentTs) return false;
+  return true;
 }
 
 function generateRefreshToken() {
@@ -33,6 +59,47 @@ async function issueSession(user) {
   const refreshExpiresAt = new Date(Date.now() + refreshTtlDays * 24 * 60 * 60 * 1000);
   await RefreshToken.create({ userId: user.id, tokenHash, expiresAt: refreshExpiresAt, revoked: false });
   const infl = user.role === 'influencer' ? await Influencer.findOne({ where: { userId: user.id } }) : null;
+
+  let influencerSummary = null;
+  if (infl) {
+    const profilePicUrl = infl.profilePicUrl || null;
+
+    const kycRow = await InfluencerKyc.findOne({ where: { influencerId: infl.id } });
+    const kycObj = kycRow ? kycRow.toJSON() : null;
+    const kycComplete = isInfluencerKycComplete(kycObj);
+    const kycStatus = kycObj?.status || 'none';
+
+    const methods = await InfluencerPaymentMethod.findAll({ where: { influencerId: infl.id }, order: [['isPreferred', 'DESC'], ['updatedAt', 'DESC']] });
+    const hasPaymentMethod = methods.length > 0;
+    const preferred = methods.find(m => m.isPreferred) || methods[0] || null;
+    const preferredObj = preferred ? preferred.toJSON() : null;
+    const paymentStatus = hasPaymentMethod ? (preferredObj?.status || 'unverified') : 'none';
+    const paymentType = preferredObj?.type || null;
+    const paymentIsVerified = paymentStatus === 'verified';
+
+    influencerSummary = {
+      id: infl.id,
+      ulid: infl.ulid,
+      handle: infl.handle || null,
+      profilePicUrl,
+      hasProfilePic: Boolean(profilePicUrl),
+      verificationStatus: infl.verificationStatus || 'none',
+      kyc: {
+        status: kycStatus,
+        isComplete: kycComplete,
+        askKyc: !kycComplete
+      },
+      payment: {
+        status: paymentStatus,
+        type: paymentType,
+        hasMethod: hasPaymentMethod,
+        isVerified: paymentIsVerified,
+        isPreferredSet: Boolean(preferredObj?.isPreferred),
+        bankAccountNumberMasked: maskAccount(preferredObj?.bankAccountNumber),
+        upiIdMasked: maskUpi(preferredObj?.upiId)
+      }
+    };
+  }
   return {
     // Prefer `accessToken` as the canonical field, keep `token` for backward compatibility.
     accessToken,
@@ -41,7 +108,14 @@ async function issueSession(user) {
     expiresAt: accessExpiresAt,
     refreshToken: rawRefresh,
     refreshExpiresAt: refreshExpiresAt.toISOString(),
-    user: { id: user.id, role: user.role, name: user.name, handle: infl?.handle || null }
+    user: {
+      id: user.id,
+      role: user.role,
+      name: user.name || null,
+      email: user.email || null,
+      phone: user.phone || null,
+      influencer: influencerSummary
+    }
   };
 }
 const bcrypt = require('bcryptjs');
@@ -62,6 +136,64 @@ function getGoogleAudiences() {
   const raw = (process.env.GOOGLE_CLIENT_IDS || process.env.GOOGLE_CLIENT_ID || '').trim();
   if (!raw) return [];
   return raw.split(',').map(s => s.trim()).filter(Boolean);
+}
+
+async function verifyGoogleIdToken(idToken: string) {
+  const audiences = getGoogleAudiences();
+  if (audiences.length === 0) {
+    const err: any = new Error('google_auth_not_configured');
+    err.code = 'google_auth_not_configured';
+    throw err;
+  }
+  const ticket = await getGoogleClient().verifyIdToken({ idToken, audience: audiences });
+  const payload = ticket.getPayload();
+  if (!payload) {
+    const err: any = new Error('invalid_google_token');
+    err.code = 'invalid_google_token';
+    throw err;
+  }
+  const sub = payload.sub;
+  const email = payload.email;
+  const emailVerified = payload.email_verified;
+  const name = payload.name;
+  const picture = payload.picture;
+  if (!sub || !email) {
+    const err: any = new Error('invalid_google_token');
+    err.code = 'invalid_google_token';
+    throw err;
+  }
+  if (emailVerified === false) {
+    const err: any = new Error('google_email_not_verified');
+    err.code = 'google_email_not_verified';
+    throw err;
+  }
+  return { sub, email, emailVerified, name, picture };
+}
+
+function signGoogleSignupToken(payload: { sub: string; email: string; name?: string | null; picture?: string | null }) {
+  const secret = process.env.JWT_SECRET || 'secret';
+  return jwt.sign(
+    {
+      t: 'google_signup',
+      sub: payload.sub,
+      email: payload.email,
+      name: payload.name || null,
+      picture: payload.picture || null
+    },
+    secret,
+    { expiresIn: '10m' }
+  );
+}
+
+function verifyGoogleSignupToken(token: string) {
+  const secret = process.env.JWT_SECRET || 'secret';
+  const decoded: any = jwt.verify(token, secret);
+  if (!decoded || decoded.t !== 'google_signup' || !decoded.sub || !decoded.email) {
+    const err: any = new Error('invalid_signup_token');
+    err.code = 'invalid_signup_token';
+    throw err;
+  }
+  return decoded;
 }
 
 exports.register = async (req, res) => {
@@ -109,23 +241,7 @@ exports.googleAuth = async (req, res) => {
   try {
     const { idToken, role, phone } = req.body || {};
     if (!idToken) return res.status(400).json({ error: 'idToken is required' });
-    const audiences = getGoogleAudiences();
-    if (audiences.length === 0) {
-      return res.status(500).json({ error: 'google_auth_not_configured', details: 'Set GOOGLE_CLIENT_IDS (comma-separated) or GOOGLE_CLIENT_ID' });
-    }
-
-    const ticket = await getGoogleClient().verifyIdToken({ idToken, audience: audiences });
-    const payload = ticket.getPayload();
-    if (!payload) return res.status(401).json({ error: 'invalid_google_token' });
-
-    const sub = payload.sub;
-    const email = payload.email;
-    const emailVerified = payload.email_verified;
-    const name = payload.name;
-    const picture = payload.picture;
-
-    if (!sub || !email) return res.status(401).json({ error: 'invalid_google_token' });
-    if (emailVerified === false) return res.status(401).json({ error: 'google_email_not_verified' });
+    const { sub, email, emailVerified, name, picture } = await verifyGoogleIdToken(idToken);
 
     let user = await User.findOne({ where: { googleSub: sub } });
     if (!user) user = await User.findOne({ where: { email } });
@@ -166,8 +282,105 @@ exports.googleAuth = async (req, res) => {
     const session = await issueSession(user);
     res.json(session);
   } catch (err) {
+    if (err?.code === 'google_auth_not_configured') {
+      return res.status(500).json({ error: 'google_auth_not_configured', details: 'Set GOOGLE_CLIENT_IDS (comma-separated) or GOOGLE_CLIENT_ID' });
+    }
     const msg = err?.message || 'Google auth failed';
     return res.status(401).json({ error: 'google_auth_failed', details: msg });
+  }
+};
+
+// Step 1: verify Google ID token and tell client whether signup is required.
+exports.googleInit = async (req, res) => {
+  try {
+    const { idToken } = req.body || {};
+    if (!idToken) return res.status(400).json({ error: 'idToken is required' });
+    const { sub, email, name, picture } = await verifyGoogleIdToken(idToken);
+
+    let user = await User.findOne({ where: { googleSub: sub } });
+    if (!user) user = await User.findOne({ where: { email } });
+
+    if (user) {
+      // Link Google identity if needed
+      const updates: any = {};
+      if (!user.googleSub || user.googleSub !== sub) updates.googleSub = sub;
+      if (!user.authProvider) updates.authProvider = 'google';
+      if (!user.googlePictureUrl && picture) updates.googlePictureUrl = picture;
+      if (Object.keys(updates).length > 0) await user.update(updates);
+
+      const session = await issueSession(user);
+      return res.json({ signupRequired: false, session });
+    }
+
+    const signupToken = signGoogleSignupToken({ sub, email, name: name || null, picture: picture || null });
+    return res.json({
+      signupRequired: true,
+      signupToken,
+      profile: { email, name: name || null, picture: picture || null }
+    });
+  } catch (err) {
+    if (err?.code === 'google_auth_not_configured') {
+      return res.status(500).json({ error: 'google_auth_not_configured', details: 'Set GOOGLE_CLIENT_IDS (comma-separated) or GOOGLE_CLIENT_ID' });
+    }
+    const msg = err?.message || 'Google init failed';
+    return res.status(401).json({ error: 'google_auth_failed', details: msg });
+  }
+};
+
+// Step 2: complete signup for first-time Google users (collect role + phone).
+exports.googleComplete = async (req, res) => {
+  try {
+    const { signupToken, role, phone } = req.body || {};
+    if (!signupToken) return res.status(400).json({ error: 'signupToken is required' });
+    if (!role) return res.status(400).json({ error: 'role is required' });
+    if (!phone) return res.status(400).json({ error: 'phone is required' });
+    if (!['influencer', 'brand', 'admin'].includes(String(role))) {
+      return res.status(400).json({ error: 'invalid role' });
+    }
+
+    const decoded = verifyGoogleSignupToken(String(signupToken));
+    const sub = decoded.sub;
+    const email = decoded.email;
+    const name = decoded.name || null;
+    const picture = decoded.picture || null;
+
+    let user = await User.findOne({ where: { googleSub: sub } });
+    if (!user) user = await User.findOne({ where: { email } });
+
+    if (!user) {
+      const randomSecret = crypto.randomBytes(32).toString('hex');
+      const hash = await bcrypt.hash(randomSecret, 10);
+      user = await User.create({
+        name,
+        email,
+        phone,
+        passwordHash: hash,
+        role,
+        authProvider: 'google',
+        googleSub: sub,
+        googlePictureUrl: picture,
+        emailVerified: true
+      });
+      if (role === 'influencer') await Influencer.create({ userId: user.id });
+      if (role === 'brand') await Brand.create({ userId: user.id, companyName: name || 'Brand' });
+    } else {
+      // If account was created by another flow, just link Google + ensure phone.
+      const updates: any = {};
+      if (!user.googleSub || user.googleSub !== sub) updates.googleSub = sub;
+      if (!user.authProvider) updates.authProvider = 'google';
+      if (!user.googlePictureUrl && picture) updates.googlePictureUrl = picture;
+      if (!user.phone && phone) updates.phone = phone;
+      if (Object.keys(updates).length > 0) await user.update(updates);
+    }
+
+    const session = await issueSession(user);
+    return res.json(session);
+  } catch (err) {
+    if (err?.code === 'invalid_signup_token' || /jwt/i.test(String(err?.message || ''))) {
+      return res.status(400).json({ error: 'invalid_signup_token' });
+    }
+    const msg = err?.message || 'Google complete failed';
+    return res.status(400).json({ error: 'google_complete_failed', details: msg });
   }
 };
 

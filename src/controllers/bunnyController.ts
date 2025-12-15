@@ -1,5 +1,35 @@
 const fetch = require('node-fetch');
-const { Post, InfluencerAdMedia } = require('../models');
+const { Post, InfluencerAdMedia, Influencer } = require('../models');
+
+async function deleteFromBunny(guid: string) {
+  const libraryId = process.env.BUNNY_STREAM_LIBRARY_ID;
+  const apiKey = process.env.BUNNY_STREAM_API_KEY;
+  if (!libraryId || !apiKey) {
+    return { ok: false, status: 500, error: 'Bunny Stream env missing' };
+  }
+  const r = await fetch(`https://video.bunnycdn.com/library/${libraryId}/videos/${guid}`, {
+    method: 'DELETE',
+    headers: { AccessKey: apiKey }
+  });
+  if (r.ok) return { ok: true, status: r.status };
+  const text = await r.text().catch(() => '');
+  // Bunny returns 404 if already deleted; treat as OK for idempotency.
+  if (r.status === 404) return { ok: true, status: 404, alreadyDeleted: true };
+  return { ok: false, status: r.status, error: text || 'bunny_error' };
+}
+
+async function removeGuidFromPostMedia(postId: number, guid: string) {
+  try {
+    const post = await Post.findByPk(postId);
+    if (!post) return;
+    const media = Array.isArray(post.media) ? post.media : [];
+    const filtered = media.filter(m => !(m && m.provider === 'bunny' && m.guid === guid));
+    if (filtered.length !== media.length) {
+      post.media = filtered;
+      await post.save();
+    }
+  } catch (_) {}
+}
 
 exports.adminListVideos = async (req, res) => {
   try {
@@ -29,6 +59,51 @@ exports.adminListVideos = async (req, res) => {
     }));
     res.json({ page: Number(page), perPage: Number(perPage), total: json.totalItems || items.length, items });
   } catch (err) { res.status(500).json({ error: err.message }); }
+};
+
+// Influencer: delete one of my Bunny videos (by guid)
+exports.deleteMyVideo = async (req, res) => {
+  try {
+    const { guid } = req.params;
+    if (!guid) return res.status(400).json({ error: 'guid_required' });
+
+    const infl = await Influencer.findOne({ where: { userId: req.user.id } });
+    if (!infl) return res.status(404).json({ error: 'influencer_not_found' });
+
+    const row = await InfluencerAdMedia.findOne({ where: { guid, influencerId: infl.id, provider: 'bunny' } });
+    if (!row) return res.status(404).json({ error: 'not_found' });
+
+    const bunny = await deleteFromBunny(guid);
+    if (!bunny.ok) return res.status(502).json({ error: 'bunny_error', status: bunny.status, details: bunny.error });
+
+    await removeGuidFromPostMedia(row.postId, guid);
+    await row.destroy();
+
+    return res.json({ ok: true, guid, bunnyDeleted: true, bunnyStatus: bunny.status });
+  } catch (err) {
+    return res.status(500).json({ error: 'server_error', details: err.message });
+  }
+};
+
+// Admin: delete any Bunny video (by guid)
+exports.adminDeleteVideo = async (req, res) => {
+  try {
+    const { guid } = req.params;
+    if (!guid) return res.status(400).json({ error: 'guid_required' });
+
+    const bunny = await deleteFromBunny(guid);
+    if (!bunny.ok) return res.status(502).json({ error: 'bunny_error', status: bunny.status, details: bunny.error });
+
+    const row = await InfluencerAdMedia.findOne({ where: { guid, provider: 'bunny' } });
+    if (row) {
+      await removeGuidFromPostMedia(row.postId, guid);
+      await row.destroy();
+    }
+
+    return res.json({ ok: true, guid, bunnyDeleted: true, bunnyStatus: bunny.status, dbDeleted: Boolean(row) });
+  } catch (err) {
+    return res.status(500).json({ error: 'server_error', details: err.message });
+  }
 };
 
 exports.postPlayback = async (req, res) => {

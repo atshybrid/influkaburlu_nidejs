@@ -36,9 +36,12 @@ router.get('/:id/feed', require('../controllers/influencerPostsController').infl
 router.get('/ads', require('../controllers/influencerPostsController').publicAds);
 // Public: canonical influencer ad media (videos)
 router.get('/ads/media', require('../controllers/mediaController').listInfluencerAdMedia);
+// Auth: canonical influencer ad media (videos) for logged-in influencer
+router.get('/me/ads/media', auth(['influencer']), require('../controllers/mediaController').listMyInfluencerAdMedia);
 // Self ad post video via ULID
 // Redesigned flow (preferred): init (JSON) + upload (PUT octet-stream), avoids multipart boundary issues on Windows/PowerShell
 router.post('/me/ads/video/init', auth(['influencer']), require('../controllers/postsController').initAdVideoMe);
 router.put('/me/ads/video/:guid/upload', auth(['influencer']), require('../controllers/postsController').uploadAdVideoMe);
+router.delete('/me/ads/video/:guid', auth(['influencer']), require('../controllers/bunnyController').deleteMyVideo);
 router.post('/me/ads/video', auth(['influencer']), multipartBoundaryFix, upload.single('file'), require('../controllers/postsController').createPostVideoMe);
 module.exports = router;

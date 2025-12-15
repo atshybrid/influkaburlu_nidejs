@@ -36,6 +36,7 @@ router.get('/public/influencers', influencerCtrl.publicLandingList);
 
 // Bunny admin/public
 router.get('/admin/bunny/videos', requireAuth(['admin']), bunnyCtrl.adminListVideos);
+router.delete('/admin/bunny/videos/:guid', requireAuth(['admin']), bunnyCtrl.adminDeleteVideo);
 router.get('/admin/bunny/media/status-counts', requireAuth(['admin']), bunnyCtrl.mediaStatusCounts);
 // Admin KYC
 router.get('/admin/kyc', requireAuth(['admin']), kycCtrl.adminList);

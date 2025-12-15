@@ -459,6 +459,123 @@
         }
       }
     },
+    "/api/auth/google/init": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Google Sign-In init (detect first-time signup)",
+        "description": "Verifies a Google ID token. If the user already exists, returns a session. If first-time signup, returns a short-lived signupToken plus basic profile so the client can collect role + phone and call /api/auth/google/complete.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthGoogleInitRequest"
+              },
+              "example": {
+                "idToken": "<google-id-token>"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthGoogleInitResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "500": {
+            "description": "Server Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/google/complete": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Google Sign-In complete (collect role + phone)",
+        "description": "Completes first-time Google signup using the signupToken from /api/auth/google/init and collects required onboarding fields.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthGoogleCompleteRequest"
+              },
+              "examples": {
+                "completeInfluencer": {
+                  "summary": "Complete signup (influencer)",
+                  "value": {
+                    "signupToken": "<google-signup-token>",
+                    "role": "influencer",
+                    "phone": "8888888888"
+                  }
+                },
+                "completeBrand": {
+                  "summary": "Complete signup (brand)",
+                  "value": {
+                    "signupToken": "<google-signup-token>",
+                    "role": "brand",
+                    "phone": "8282868389"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/auth/request-mpin-reset": {
       "post": {
         "tags": [
@@ -1680,6 +1797,105 @@
         }
       }
     },
+    "/api/influencers/me/ads/media": {
+      "get": {
+        "tags": [
+          "Influencers"
+        ],
+        "summary": "My influencer ad media (canonical)",
+        "description": "Returns the same response shape as /api/influencers/ads/media but only for the authenticated influencer.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "postUlid",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "adUlid",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "language",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/InfluencerAdMediaItem"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/influencers/me/ads/video/init": {
       "post": {
         "tags": [
@@ -1860,11 +2076,142 @@
         },
         "responses": {
           "200": {
+            "description": "OK (attached to existing ad post)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InfluencerAdVideoUploadResponse"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Created (a new ad post was created)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InfluencerAdVideoUploadResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "File too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Upstream Bunny error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/influencers/me/ads/video/{guid}": {
+      "delete": {
+        "tags": [
+          "Influencers"
+        ],
+        "summary": "Delete own Bunny ad video",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "guid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
             "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "type": "object",
+                  "properties": {
+                    "ok": { "type": "boolean" },
+                    "guid": { "type": "string" },
+                    "bunnyDeleted": { "type": "boolean" },
+                    "bunnyStatus": { "type": "integer" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Upstream Bunny error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -2658,6 +3005,88 @@
         }
       }
     },
+    "/api/admin/bunny/videos/{guid}": {
+      "delete": {
+        "tags": [
+          "Bunny"
+        ],
+        "summary": "Admin: delete Bunny video",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "guid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": { "type": "boolean" },
+                    "guid": { "type": "string" },
+                    "bunnyDeleted": { "type": "boolean" },
+                    "bunnyStatus": { "type": "integer" },
+                    "dbDeleted": { "type": "boolean" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Upstream Bunny error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/admin/bunny/media/status-counts": {
       "get": {
         "tags": [
@@ -2895,6 +3324,77 @@
           }
         }
       },
+      "AuthGoogleInitRequest": {
+        "type": "object",
+        "required": [
+          "idToken"
+        ],
+        "properties": {
+          "idToken": {
+            "type": "string",
+            "description": "Google ID token obtained from Google Sign-In SDK."
+          }
+        }
+      },
+      "AuthGoogleInitResponse": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "signupRequired",
+              "session"
+            ],
+            "properties": {
+              "signupRequired": { "type": "boolean", "enum": [false] },
+              "session": { "$ref": "#/components/schemas/AuthResponse" }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "signupRequired",
+              "signupToken",
+              "profile"
+            ],
+            "properties": {
+              "signupRequired": { "type": "boolean", "enum": [true] },
+              "signupToken": { "type": "string", "description": "Short-lived token to be used with /api/auth/google/complete." },
+              "profile": {
+                "type": "object",
+                "required": [
+                  "email"
+                ],
+                "properties": {
+                  "email": { "type": "string" },
+                  "name": { "type": ["string", "null"] },
+                  "picture": { "type": ["string", "null"] }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "AuthGoogleCompleteRequest": {
+        "type": "object",
+        "required": [
+          "signupToken",
+          "role",
+          "phone"
+        ],
+        "properties": {
+          "signupToken": {
+            "type": "string",
+            "description": "signupToken returned from /api/auth/google/init"
+          },
+          "role": {
+            "type": "string",
+            "enum": ["influencer", "brand", "admin"]
+          },
+          "phone": {
+            "type": "string"
+          }
+        }
+      },
       "AuthRefreshRequest": {
         "type": "object",
         "required": [
@@ -2987,6 +3487,47 @@
           },
           "role": {
             "type": "string"
+          },
+          "name": {
+            "type": ["string", "null"]
+          },
+          "email": {
+            "type": ["string", "null"]
+          },
+          "phone": {
+            "type": ["string", "null"]
+          },
+          "influencer": {
+            "type": ["object", "null"],
+            "description": "Present when the logged-in user role is influencer. Includes summary KYC/payment/profile flags for mobile onboarding.",
+            "properties": {
+              "id": { "type": "integer" },
+              "ulid": { "type": "string" },
+              "handle": { "type": ["string", "null"] },
+              "profilePicUrl": { "type": ["string", "null"] },
+              "hasProfilePic": { "type": "boolean" },
+              "verificationStatus": { "type": "string" },
+              "kyc": {
+                "type": "object",
+                "properties": {
+                  "status": { "type": "string", "description": "none|pending|verified|rejected" },
+                  "isComplete": { "type": "boolean" },
+                  "askKyc": { "type": "boolean" }
+                }
+              },
+              "payment": {
+                "type": "object",
+                "properties": {
+                  "status": { "type": "string", "description": "none|unverified|verified|rejected" },
+                  "type": { "type": ["string", "null"], "description": "bank|upi" },
+                  "hasMethod": { "type": "boolean" },
+                  "isVerified": { "type": "boolean" },
+                  "isPreferredSet": { "type": "boolean" },
+                  "bankAccountNumberMasked": { "type": ["string", "null"] },
+                  "upiIdMasked": { "type": ["string", "null"] }
+                }
+              }
+            }
           }
         }
       },
@@ -3564,6 +4105,20 @@
             "type": "string"
           },
           "playbackUrl": {
+      "InfluencerAdVideoUploadResponse": {
+        "type": "object",
+        "properties": {
+          "guid": { "type": "string" },
+          "uploadUrl": { "type": ["string", "null"], "description": "Bunny uploadUrl (legacy flow)." },
+          "playbackUrl": { "type": "string" },
+          "postIdUlid": { "type": "string" },
+          "categories": { "type": "array", "items": { "type": "string" } },
+          "uploaded": { "type": "boolean" },
+          "size": { "type": ["integer", "null"] },
+          "metaApplied": { "type": "boolean" },
+          "bunnyMetaUpdated": { "type": "boolean" }
+        }
+      },
             "type": "string"
           },
           "thumbnailUrl": {

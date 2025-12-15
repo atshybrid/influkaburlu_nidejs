@@ -1,4 +1,4 @@
-const { Influencer, InfluencerPricing, User, Country, State, District, InfluencerPaymentMethod, InfluencerAdMedia } = require('../models');
+const { Influencer, InfluencerPricing, User, Country, State, District, InfluencerPaymentMethod, InfluencerAdMedia, Application, Ad, Brand, Payout } = require('../models');
 const { Op } = require('sequelize');
 const { uploadBuffer } = require('../utils/r2');
 const fs = require('fs');
@@ -153,41 +153,93 @@ exports.dashboard = async (req, res) => {
     const infl = await Influencer.findOne({ where: { userId } });
     if (!infl) return res.status(404).json({ error: 'not found' });
 
-    // Lightweight aggregates; replace with real queries if models exist
+    // Real aggregates (no mocked/sample data)
+    const activeBriefs = await Application.count({ where: { influencerId: infl.id, status: { [Op.ne]: 'paid' } } });
+    const pendingApprovals = await Application.count({ where: { influencerId: infl.id, status: 'delivered' } });
+
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const earningsMonthRaw = await Payout.sum('netAmount', { where: { influencerId: infl.id, status: 'completed', createdAt: { [Op.gte]: monthStart } } });
+    const earningsMonth = Number(earningsMonthRaw || 0);
+
+    const nextPendingPayout = await Payout.findOne({ where: { influencerId: infl.id, status: 'pending' }, order: [['createdAt', 'ASC']] });
+    const nextPayout = nextPendingPayout ? new Date(nextPendingPayout.createdAt).toISOString().slice(0, 10) : null;
+
     const metrics = {
-      activeBriefs: 3,
-      pendingApprovals: 2,
-      earningsMonth: 1280,
-      nextPayout: new Date(Date.now() + 16 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+      activeBriefs,
+      pendingApprovals,
+      earningsMonth,
+      nextPayout
     };
 
+    // Briefs: derived from applications + their ad/brand
+    const apps = await Application.findAll({
+      where: { influencerId: infl.id },
+      include: [{ model: Ad, include: [{ model: Brand, attributes: ['companyName'] }], attributes: ['title', 'deliverableType', 'deadline'] }],
+      order: [['createdAt', 'DESC']],
+      limit: 20,
+    });
+
+    const briefsItems = apps
+      .slice(0, 10)
+      .map(a => {
+        const ad = a.Ad;
+        const brand = ad?.Brand;
+        const deadlineIso = ad?.deadline ? new Date(ad.deadline).toISOString().slice(0, 10) : null;
+        return {
+          campaign: brand?.companyName || ad?.title || null,
+          type: ad?.deliverableType || null,
+          due: deadlineIso,
+          status: a.status || null
+        };
+      });
+
+    // Calendar: 14-day lookahead; hasTask if any ad deadline hits that day
+    const deadlineSet = new Set(
+      apps
+        .map(a => a.Ad?.deadline)
+        .filter(Boolean)
+        .map(d => new Date(d).toISOString().slice(0, 10))
+    );
     const today = new Date();
     const days = Array.from({ length: 14 }).map((_, i) => {
       const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() + i);
       const iso = d.toISOString().slice(0, 10);
-      return { date: iso, hasTask: i % 3 === 0 };
+      return { date: iso, hasTask: deadlineSet.has(iso) };
     });
 
-    const items = [
-      { campaign: 'Acme Fitness', type: 'TikTok + Stories', due: days[8].date, status: 'In progress' },
-      { campaign: 'Glow Cosmetics', type: 'UGC video', due: days[3].date, status: 'Pending approval' },
-      { campaign: 'Neo Tech', type: 'Instagram Reel', due: days[12].date, status: 'Assigned' }
-    ];
+    // Payout history: latest completed payouts
+    const payoutRows = await Payout.findAll({ where: { influencerId: infl.id, status: 'completed' }, order: [['createdAt', 'DESC']], limit: 12 });
+    const payoutHistory = payoutRows.slice(0, 6).map(p => {
+      const d = new Date(p.createdAt);
+      const month = d.toLocaleString('en-US', { month: 'short' });
+      return {
+        month,
+        amount: Number(p.netAmount || 0),
+        status: 'Paid'
+      };
+    });
 
     const payouts = {
-      history: [
-        { month: 'Nov', amount: 980, status: 'Paid' },
-        { month: 'Oct', amount: 1120, status: 'Paid' },
-        { month: 'Sep', amount: 870, status: 'Paid' }
-      ],
-      nextPayout: metrics.nextPayout
+      history: payoutHistory,
+      nextPayout
     };
 
     res.json({
-      influencer: { id: infl.id, idUlid: infl.ulid, handle: infl.handle, verificationStatus: infl.verificationStatus, badges: infl.badges || [] },
+      influencer: {
+        // Note: JWT `id` is the User id; Influencer has its own primary key id.
+        id: infl.id,
+        influencerId: infl.id,
+        userId: infl.userId,
+        idUlid: infl.ulid,
+        ulid: infl.ulid,
+        handle: infl.handle,
+        verificationStatus: infl.verificationStatus,
+        badges: infl.badges || []
+      },
       metrics,
       calendar: { days },
-      briefs: { items },
+      briefs: { items: briefsItems },
       payouts
     });
   } catch (err) {

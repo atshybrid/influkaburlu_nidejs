@@ -4,6 +4,25 @@ const fetch = require('node-fetch');
 let axios;
 const fs = require('fs');
 
+function normalizeStringValue(v) {
+  if (v === undefined || v === null) return null;
+  const s = String(v).trim();
+  return s ? s : null;
+}
+
+function mergeUniqueStrings(existing, ...values) {
+  const out = new Set(
+    (Array.isArray(existing) ? existing : [])
+      .map(x => normalizeStringValue(x))
+      .filter(Boolean)
+  );
+  for (const v of values) {
+    const s = normalizeStringValue(v);
+    if (s) out.add(s);
+  }
+  return Array.from(out);
+}
+
 function getMaxVideoBytes() {
   const maxMb = parseInt(process.env.MEDIA_MAX_VIDEO_MB || '100', 10);
   if (!Number.isFinite(maxMb) || maxMb <= 0) return 100 * 1024 * 1024;
@@ -208,9 +227,7 @@ exports.createPostVideoMe = async (req, res) => {
     let createdNew = false;
     if (!post) {
       // Create a new ad-type post for this influencer
-      const baseCategories = [];
-      if (category) baseCategories.push(String(category));
-      if (categoryCode) baseCategories.push(String(categoryCode));
+      const baseCategories = mergeUniqueStrings([], category, categoryCode);
       post = await Post.create({
         userId,
         influencerId: infl.id,
@@ -226,11 +243,8 @@ exports.createPostVideoMe = async (req, res) => {
     // Enrich post details from influencer profile if missing
     if (!post.language && Array.isArray(infl.languages) && infl.languages.length) post.language = infl.languages[0];
     if ((!post.states || !post.states.length) && Array.isArray(infl.states)) post.states = infl.states;
-    // Add category by id or code string to post categories
-    const categories = Array.isArray(post.categories) ? post.categories : [];
-    if (category) categories.push(String(category));
-    if (categoryCode) categories.push(String(categoryCode));
-    post.categories = categories;
+    // Add category values (deduped + trimmed)
+    post.categories = mergeUniqueStrings(post.categories, category, categoryCode);
     const libraryId = process.env.BUNNY_STREAM_LIBRARY_ID;
     const apiKey = process.env.BUNNY_STREAM_API_KEY;
     if (!libraryId || !apiKey) return res.status(500).json({ error: 'Bunny Stream env missing' });
@@ -245,7 +259,20 @@ exports.createPostVideoMe = async (req, res) => {
     }
     const json = await r.json();
     const playbackUrl = `https://iframe.mediadelivery.net/embed/${libraryId}/${json.guid}`;
-    const mediaEntry = { type: 'video', provider: 'bunny', guid: json.guid, uploadUrl: json.uploadUrl, playbackUrl, meta: { title: title || null, description: description || null, caption: caption || null, thumbnailUrl: thumbnailUrl || null } };
+    const mediaEntry = {
+      type: 'video',
+      provider: 'bunny',
+      guid: json.guid,
+      uploadUrl: json.uploadUrl,
+      playbackUrl,
+      meta: {
+        title: title || null,
+        description: description || null,
+        caption: caption || null,
+        thumbnailUrl: thumbnailUrl || null,
+        categories: post.categories || []
+      }
+    };
     const media = Array.isArray(post.media) ? post.media : [];
     media.push(mediaEntry);
     post.media = media;
@@ -368,7 +395,17 @@ exports.createPostVideoMe = async (req, res) => {
         }
       }
     } catch (_) { /* ignore meta update errors */ }
-    const payload = { guid: json.guid, uploadUrl: json.uploadUrl, playbackUrl, postIdUlid: post.ulid, uploaded: uploadedOk, size: req.file?.size || null, metaApplied: true, bunnyMetaUpdated: metaUpdated };
+    const payload = {
+      guid: json.guid,
+      uploadUrl: json.uploadUrl,
+      playbackUrl,
+      postIdUlid: post.ulid,
+      categories: post.categories || [],
+      uploaded: uploadedOk,
+      size: req.file?.size || null,
+      metaApplied: true,
+      bunnyMetaUpdated: metaUpdated
+    };
     if (createdNew) return res.status(201).json(payload);
     return res.status(200).json(payload);
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -393,9 +430,7 @@ exports.initAdVideoMe = async (req, res) => {
 
     let createdNew = false;
     if (!post) {
-      const baseCategories = [];
-      if (category) baseCategories.push(String(category));
-      if (categoryCode) baseCategories.push(String(categoryCode));
+      const baseCategories = mergeUniqueStrings([], category, categoryCode);
       post = await Post.create({
         userId,
         influencerId: infl.id,
@@ -413,11 +448,8 @@ exports.initAdVideoMe = async (req, res) => {
     if (!post.language && Array.isArray(infl.languages) && infl.languages.length) post.language = infl.languages[0];
     if ((!post.states || !post.states.length) && Array.isArray(infl.states)) post.states = infl.states;
 
-    // Add categories
-    const categories = Array.isArray(post.categories) ? post.categories : [];
-    if (category) categories.push(String(category));
-    if (categoryCode) categories.push(String(categoryCode));
-    post.categories = categories;
+    // Add categories (deduped + trimmed)
+    post.categories = mergeUniqueStrings(post.categories, category, categoryCode);
 
     const libraryId = process.env.BUNNY_STREAM_LIBRARY_ID;
     const apiKey = process.env.BUNNY_STREAM_API_KEY;
@@ -445,7 +477,8 @@ exports.initAdVideoMe = async (req, res) => {
         title: title || null,
         description: description || null,
         caption: caption || null,
-        thumbnailUrl: thumbnailUrl || null
+        thumbnailUrl: thumbnailUrl || null,
+        categories: post.categories || []
       }
     };
     const media = Array.isArray(post.media) ? post.media : [];
