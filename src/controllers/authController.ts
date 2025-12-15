@@ -180,8 +180,11 @@ exports.requestMpinReset = async (req, res) => {
 
 exports.verifyMpinReset = async (req, res) => {
   try {
-    const { phone, otp, newMpin } = req.body;
-    if (!phone || !otp || !newMpin) return res.status(400).json({ error: 'phone, otp, newMpin are required' });
+    const { phone, newMpin } = req.body;
+    const otp = req.body?.otp ?? req.body?.code;
+    if (!phone || !otp || !newMpin) {
+      return res.status(400).json({ error: 'phone, otp/code, newMpin are required' });
+    }
     if (!/^\d{6}$/.test(newMpin)) return res.status(400).json({ error: 'newMpin must be 6 digits' });
     // Prefer DB validation
     const record = await OtpRequest.findOne({

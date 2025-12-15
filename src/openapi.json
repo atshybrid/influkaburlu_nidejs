@@ -2733,22 +2733,40 @@
       },
       "MpinResetVerifyRequest": {
         "type": "object",
+        "description": "Accepts either `otp` or legacy `code` for the 6-digit verification value.",
         "required": [
           "phone",
-          "code",
           "newMpin"
         ],
         "properties": {
           "phone": {
             "type": "string"
           },
+          "otp": {
+            "type": "string",
+            "description": "6-digit OTP sent to the phone."
+          },
           "code": {
-            "type": "string"
+            "type": "string",
+            "description": "Alias for `otp` (supported for backward compatibility)."
           },
           "newMpin": {
-            "type": "string"
+            "type": "string",
+            "description": "New 6-digit MPIN to set."
           }
-        }
+        },
+        "oneOf": [
+          {
+            "required": [
+              "otp"
+            ]
+          },
+          {
+            "required": [
+              "code"
+            ]
+          }
+        ]
       },
       "AuthResponse": {
         "type": "object",
