@@ -80,6 +80,16 @@ async function connectWithRetry(retries = 8, delayMs = 1500) {
   for (let i = 0; i < retries; i++) {
     try {
       await db.sequelize.authenticate();
+
+    // Ensure schema patches that may have failed during module load.
+    try {
+      if (typeof db.ensureUserAuthColumns === 'function') {
+        await db.ensureUserAuthColumns();
+      }
+    } catch (e) {
+      console.warn('Warning: ensureUserAuthColumns failed:', e?.message || e);
+    }
+
       await db.sequelize.sync();
       console.log('Database connected and synced');
       return;

@@ -135,6 +135,10 @@ async function ensureUserAuthColumns() {
 	}
 }
 
+// Exported so server can run this after DB connect (more reliable than one-time boot call).
+module.exports.ensureUserAuthColumns = ensureUserAuthColumns;
+
+// Best-effort early attempt (may fail if DB is not reachable yet).
 ensureUserAuthColumns().catch(() => {});
 
 async function ensureInfluencerAdMediaTable() {
