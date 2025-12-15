@@ -37,6 +37,11 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/api', routes);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(openapi));
 
+// Expose the raw OpenAPI spec (useful for Swagger tooling / Postman import)
+app.get('/openapi.json', (req, res) => {
+  res.json(openapi);
+});
+
 // Centralized error handler (ensures API errors return JSON, not HTML)
 // This is especially important for multipart/busboy/multer errors like "Unexpected end of form".
 app.use((err, req, res, next) => {
