@@ -17,6 +17,7 @@ const kycCtrl = require('../controllers/kycController');
 const payCtrl = require('../controllers/paymentController');
 const requireAuth = require('../middleware/auth');
 const influencerCtrl = require('../controllers/influencerController');
+const landingCtrl = require('../controllers/landingController');
 
 router.use('/auth', auth);
 router.use('/ads', ads);
@@ -33,6 +34,16 @@ router.use('/categories', categories);
 
 // Public landing page
 router.get('/public/influencers', influencerCtrl.publicLandingList);
+router.get('/public/landing', landingCtrl.getLanding);
+router.get('/public/trusted', landingCtrl.getTrusted);
+router.get('/public/case-studies', landingCtrl.getCaseStudies);
+router.get('/public/testimonials', landingCtrl.getTestimonials);
+
+// Admin: landing content CRUD
+router.get('/admin/landing', requireAuth(['admin']), landingCtrl.adminList);
+router.get('/admin/landing/:key', requireAuth(['admin']), landingCtrl.adminGet);
+router.put('/admin/landing/:key', requireAuth(['admin']), landingCtrl.adminUpsert);
+router.delete('/admin/landing/:key', requireAuth(['admin']), landingCtrl.adminDelete);
 
 // Bunny admin/public
 router.get('/admin/bunny/videos', requireAuth(['admin']), bunnyCtrl.adminListVideos);

@@ -50,6 +50,7 @@ const InfluencerPricing = require('./influencerPricing')(sequelize, Sequelize.Da
 const InfluencerKyc = require('./influencerKyc')(sequelize, Sequelize.DataTypes);
 const InfluencerPaymentMethod = require('./influencerPaymentMethod')(sequelize, Sequelize.DataTypes);
 const ProfilePack = require('./profilePack')(sequelize, Sequelize.DataTypes);
+const LandingContent = require('./landingContent')(sequelize, Sequelize.DataTypes);
 const { Country, State, District } = require('./location')(sequelize, Sequelize.DataTypes);
 const { Role, UserRole } = require('./role')(sequelize, Sequelize.DataTypes);
 
@@ -224,6 +225,24 @@ async function ensureInfluencerPaymentMethodTable() {
 ensureInfluencerKycTable().catch(() => {});
 ensureInfluencerPaymentMethodTable().catch(() => {});
 
+async function ensureLandingContentTable() {
+	const qi = sequelize.getQueryInterface();
+	try {
+		await qi.describeTable('LandingContent');
+	} catch (e) {
+		await qi.createTable('LandingContent', {
+			id: { type: Sequelize.DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+			key: { type: Sequelize.DataTypes.STRING(64), allowNull: false, unique: true },
+			data: { type: Sequelize.DataTypes.JSONB, defaultValue: {} },
+			ulid: { type: Sequelize.DataTypes.STRING(26), allowNull: false, unique: true },
+			createdAt: { type: Sequelize.DataTypes.DATE, allowNull: false, defaultValue: Sequelize.fn('NOW') },
+			updatedAt: { type: Sequelize.DataTypes.DATE, allowNull: false, defaultValue: Sequelize.fn('NOW') },
+		});
+	}
+}
+
+ensureLandingContentTable().catch(() => {});
+
 async function ensureInfluencerPricingTable() {
 	const qi = sequelize.getQueryInterface();
 	try {
@@ -298,7 +317,7 @@ InfluencerPaymentMethod.belongsTo(Influencer, { foreignKey: 'influencerId' });
 Influencer.hasMany(ProfilePack, { foreignKey: 'influencerId' });
 ProfilePack.belongsTo(Influencer, { foreignKey: 'influencerId' });
 
-module.exports = { sequelize, User, Influencer, Brand, Ad, Application, Payout, OtpRequest, RefreshToken, Post, InfluencerAdMedia, InfluencerPricing, InfluencerKyc, InfluencerPaymentMethod, ProfilePack };
+module.exports = { sequelize, User, Influencer, Brand, Ad, Application, Payout, OtpRequest, RefreshToken, Post, InfluencerAdMedia, InfluencerPricing, InfluencerKyc, InfluencerPaymentMethod, ProfilePack, LandingContent };
 module.exports.Language = Language;
 module.exports.Category = Category;
 module.exports.InfluencerCategory = InfluencerCategory;
