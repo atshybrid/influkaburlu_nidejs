@@ -53,7 +53,7 @@ exports.register = async (req, res) => {
   try {
     const { name, email, phone, password, mpin, role } = req.body;
     const credential = mpin || password;
-    if (!credential) return res.status(400).json({ error: 'mpin is required' });
+    if (!credential) return res.status(400).json({ error: 'mpin or password is required' });
     if (mpin && !/^\d{6}$/.test(mpin)) return res.status(400).json({ error: 'mpin must be 6 digits' });
     const hash = await bcrypt.hash(credential, 10);
     const user = await User.create({ name, email, phone, passwordHash: hash, role });

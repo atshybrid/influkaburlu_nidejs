@@ -2657,28 +2657,53 @@
         }
       },
       "AuthRegisterRequest": {
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string"
+        "description": "Register with either `mpin` (6 digits) or `password`.",
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "phone",
+              "mpin",
+              "role"
+            ],
+            "properties": {
+              "name": { "type": "string" },
+              "phone": { "type": "string" },
+              "email": { "type": "string" },
+              "mpin": { "type": "string", "description": "6-digit MPIN" },
+              "role": { "type": "string", "enum": ["influencer", "brand"] }
+            },
+            "example": {
+              "name": "Test User",
+              "phone": "8282868389",
+              "email": "test@example.com",
+              "mpin": "123456",
+              "role": "influencer"
+            }
           },
-          "phone": {
-            "type": "string"
-          },
-          "email": {
-            "type": "string"
-          },
-          "password": {
-            "type": "string"
-          },
-          "role": {
-            "type": "string",
-            "enum": [
-              "influencer",
-              "brand"
-            ]
+          {
+            "type": "object",
+            "required": [
+              "phone",
+              "password",
+              "role"
+            ],
+            "properties": {
+              "name": { "type": "string" },
+              "phone": { "type": "string" },
+              "email": { "type": "string" },
+              "password": { "type": "string" },
+              "role": { "type": "string", "enum": ["influencer", "brand"] }
+            },
+            "example": {
+              "name": "Test User",
+              "phone": "8282868389",
+              "email": "test@example.com",
+              "password": "your-password",
+              "role": "influencer"
+            }
           }
-        }
+        ]
       },
       "AuthLoginRequest": {
         "type": "object",
