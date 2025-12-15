@@ -107,6 +107,36 @@ async function ensureInfluencerProfilePicColumn() {
 
 ensureInfluencerProfilePicColumn().catch(() => {});
 
+async function ensureUserAuthColumns() {
+	const qi = sequelize.getQueryInterface();
+	try {
+		await sequelize.query('ALTER TABLE "Users" ADD COLUMN IF NOT EXISTS "authProvider" VARCHAR(32)');
+		await sequelize.query('ALTER TABLE "Users" ADD COLUMN IF NOT EXISTS "googleSub" VARCHAR(255)');
+		await sequelize.query('ALTER TABLE "Users" ADD COLUMN IF NOT EXISTS "googlePictureUrl" VARCHAR(512)');
+		await sequelize.query('ALTER TABLE "Users" ADD COLUMN IF NOT EXISTS "emailVerified" BOOLEAN');
+		// Best-effort unique index for googleSub (multiple NULLs allowed)
+		await sequelize.query('CREATE UNIQUE INDEX IF NOT EXISTS "Users_googleSub_unique" ON "Users"("googleSub") WHERE "googleSub" IS NOT NULL');
+	} catch (e) {
+		try {
+			const table = await qi.describeTable('Users');
+			if (!table.authProvider) {
+				await qi.addColumn('Users', 'authProvider', { type: Sequelize.DataTypes.STRING });
+			}
+			if (!table.googleSub) {
+				await qi.addColumn('Users', 'googleSub', { type: Sequelize.DataTypes.STRING });
+			}
+			if (!table.googlePictureUrl) {
+				await qi.addColumn('Users', 'googlePictureUrl', { type: Sequelize.DataTypes.STRING });
+			}
+			if (!table.emailVerified) {
+				await qi.addColumn('Users', 'emailVerified', { type: Sequelize.DataTypes.BOOLEAN });
+			}
+		} catch (_) {}
+	}
+}
+
+ensureUserAuthColumns().catch(() => {});
+
 async function ensureInfluencerAdMediaTable() {
 	const qi = sequelize.getQueryInterface();
 	try {

@@ -388,6 +388,77 @@
         }
       }
     },
+    "/api/auth/google": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Login/Register with Google (ID token)",
+        "description": "Mobile obtains a Google ID token (idToken) using Google Sign-In SDK and sends it here. For first-time users, include role. Server verifies token using GOOGLE_CLIENT_IDS / GOOGLE_CLIENT_ID env.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthGoogleRequest"
+              },
+              "examples": {
+                "loginExisting": {
+                  "summary": "Existing user login",
+                  "value": {
+                    "idToken": "<google-id-token>"
+                  }
+                },
+                "signupInfluencer": {
+                  "summary": "First-time signup (influencer)",
+                  "value": {
+                    "idToken": "<google-id-token>",
+                    "role": "influencer"
+                  }
+                },
+                "signupBrand": {
+                  "summary": "First-time signup (brand)",
+                  "value": {
+                    "idToken": "<google-id-token>",
+                    "role": "brand",
+                    "phone": "8282868389"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/auth/request-mpin-reset": {
       "post": {
         "tags": [
@@ -2800,6 +2871,27 @@
           },
           "otp": {
             "type": "string"
+          }
+        }
+      },
+      "AuthGoogleRequest": {
+        "type": "object",
+        "required": [
+          "idToken"
+        ],
+        "properties": {
+          "idToken": {
+            "type": "string",
+            "description": "Google ID token obtained from Google Sign-In SDK."
+          },
+          "role": {
+            "type": "string",
+            "enum": ["influencer", "brand", "admin"],
+            "description": "Required only for first-time signup. Ignored for existing users."
+          },
+          "phone": {
+            "type": "string",
+            "description": "Optional phone to store during first-time signup."
           }
         }
       },

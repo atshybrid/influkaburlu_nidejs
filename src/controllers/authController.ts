@@ -47,9 +47,22 @@ async function issueSession(user) {
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
+const { OAuth2Client } = require('google-auth-library');
 
 // Simple in-memory OTP store: { phone: { otp, expiresAt, requestId } }
 const otpStore = new Map();
+
+let googleClient;
+function getGoogleClient() {
+  if (!googleClient) googleClient = new OAuth2Client();
+  return googleClient;
+}
+
+function getGoogleAudiences() {
+  const raw = (process.env.GOOGLE_CLIENT_IDS || process.env.GOOGLE_CLIENT_ID || '').trim();
+  if (!raw) return [];
+  return raw.split(',').map(s => s.trim()).filter(Boolean);
+}
 
 exports.register = async (req, res) => {
   try {
@@ -91,6 +104,72 @@ exports.loginMobile = async (req, res) => {
     res.json(session);
       } catch (err) { res.status(500).json({ error: err.message }); }
     };
+
+exports.googleAuth = async (req, res) => {
+  try {
+    const { idToken, role, phone } = req.body || {};
+    if (!idToken) return res.status(400).json({ error: 'idToken is required' });
+    const audiences = getGoogleAudiences();
+    if (audiences.length === 0) {
+      return res.status(500).json({ error: 'google_auth_not_configured', details: 'Set GOOGLE_CLIENT_IDS (comma-separated) or GOOGLE_CLIENT_ID' });
+    }
+
+    const ticket = await getGoogleClient().verifyIdToken({ idToken, audience: audiences });
+    const payload = ticket.getPayload();
+    if (!payload) return res.status(401).json({ error: 'invalid_google_token' });
+
+    const sub = payload.sub;
+    const email = payload.email;
+    const emailVerified = payload.email_verified;
+    const name = payload.name;
+    const picture = payload.picture;
+
+    if (!sub || !email) return res.status(401).json({ error: 'invalid_google_token' });
+    if (emailVerified === false) return res.status(401).json({ error: 'google_email_not_verified' });
+
+    let user = await User.findOne({ where: { googleSub: sub } });
+    if (!user) user = await User.findOne({ where: { email } });
+
+    if (!user) {
+      if (!role) return res.status(400).json({ error: 'role is required for first login' });
+      if (!['influencer', 'brand', 'admin'].includes(String(role))) {
+        return res.status(400).json({ error: 'invalid role' });
+      }
+      // Create user with a random secret (Google accounts don't need a local password).
+      const randomSecret = crypto.randomBytes(32).toString('hex');
+      const hash = await bcrypt.hash(randomSecret, 10);
+      user = await User.create({
+        name: name || null,
+        email,
+        phone: phone || null,
+        passwordHash: hash,
+        role,
+        authProvider: 'google',
+        googleSub: sub,
+        googlePictureUrl: picture || null,
+        emailVerified: (emailVerified === true) ? true : null
+      });
+      if (role === 'influencer') await Influencer.create({ userId: user.id });
+      if (role === 'brand') await Brand.create({ userId: user.id, companyName: name || 'Brand' });
+    } else {
+      // Link Google identity to an existing account by email.
+      const updates: any = {};
+      if (!user.googleSub || user.googleSub !== sub) updates.googleSub = sub;
+      if (!user.authProvider) updates.authProvider = 'google';
+      if (!user.googlePictureUrl && picture) updates.googlePictureUrl = picture;
+      if (typeof emailVerified === 'boolean' && user.emailVerified == null) updates.emailVerified = emailVerified;
+      if (Object.keys(updates).length > 0) {
+        await user.update(updates);
+      }
+    }
+
+    const session = await issueSession(user);
+    res.json(session);
+  } catch (err) {
+    const msg = err?.message || 'Google auth failed';
+    return res.status(401).json({ error: 'google_auth_failed', details: msg });
+  }
+};
 
     exports.refreshToken = async (req, res) => {
     try {

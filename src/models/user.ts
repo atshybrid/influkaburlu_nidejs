@@ -4,6 +4,10 @@ module.exports = (sequelize, DataTypes) => {
     email: { type: DataTypes.STRING, unique: true },
     phone: { type: DataTypes.STRING, unique: true },
     passwordHash: { type: DataTypes.STRING },
+    authProvider: { type: DataTypes.STRING },
+    googleSub: { type: DataTypes.STRING },
+    googlePictureUrl: { type: DataTypes.STRING },
+    emailVerified: { type: DataTypes.BOOLEAN },
     role: { type: DataTypes.ENUM('influencer','brand','admin'), defaultValue: 'influencer' }
   });
   return User;

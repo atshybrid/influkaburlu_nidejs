@@ -4,6 +4,7 @@ const auth = require('../middleware/auth');
 router.post('/register', ctrl.register);
 router.post('/login', ctrl.login);
 router.post('/login-mobile', ctrl.loginMobile);
+router.post('/google', ctrl.googleAuth);
 router.post('/request-mpin-reset', ctrl.requestMpinReset);
 router.post('/verify-mpin-reset', ctrl.verifyMpinReset);
 router.post('/refresh', ctrl.refreshToken);
