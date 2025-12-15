@@ -34,6 +34,8 @@ async function issueSession(user) {
   await RefreshToken.create({ userId: user.id, tokenHash, expiresAt: refreshExpiresAt, revoked: false });
   const infl = user.role === 'influencer' ? await Influencer.findOne({ where: { userId: user.id } }) : null;
   return {
+    // Prefer `accessToken` as the canonical field, keep `token` for backward compatibility.
+    accessToken,
     token: accessToken,
     expiresIn,
     expiresAt: accessExpiresAt,
@@ -59,14 +61,16 @@ exports.register = async (req, res) => {
     const user = await User.create({ name, email, phone, passwordHash: hash, role });
     if (role === 'influencer') await Influencer.create({ userId: user.id });
     if (role === 'brand') await Brand.create({ userId: user.id, companyName: name });
-    res.json({ id: user.id, email: user.email });
+    const session = await issueSession(user);
+    res.json(session);
   } catch (err) { res.status(400).json({ error: err.message }); }
 };
 
 exports.login = async (req, res) => {
   try {
-    const { email, password, mpin } = req.body;
-    const user = await User.findOne({ where: { email } });
+    const { email, phone, password, mpin } = req.body;
+    if (!email && !phone) return res.status(400).json({ error: 'email or phone is required' });
+    const user = await User.findOne({ where: email ? { email } : { phone } });
     if (!user) return res.status(401).json({ error: 'Invalid credentials' });
     const ok = await bcrypt.compare(mpin || password, user.passwordHash);
     if (!ok) return res.status(401).json({ error: 'Invalid credentials' });

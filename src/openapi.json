@@ -259,6 +259,28 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/AuthRegisterRequest"
+              },
+              "examples": {
+                "mpin": {
+                  "summary": "Register with MPIN",
+                  "value": {
+                    "name": "Test User",
+                    "phone": "8282868389",
+                    "email": "test@example.com",
+                    "mpin": "123456",
+                    "role": "influencer"
+                  }
+                },
+                "password": {
+                  "summary": "Register with Password",
+                  "value": {
+                    "name": "Test User",
+                    "phone": "8282868389",
+                    "email": "test@example.com",
+                    "password": "your-password",
+                    "role": "influencer"
+                  }
+                }
               }
             }
           }
@@ -290,6 +312,29 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/AuthLoginRequest"
+              },
+              "examples": {
+                "emailPassword": {
+                  "summary": "Email + Password",
+                  "value": {
+                    "email": "test@example.com",
+                    "password": "your-password"
+                  }
+                },
+                "phonePassword": {
+                  "summary": "Phone + Password",
+                  "value": {
+                    "phone": "8282868389",
+                    "password": "your-password"
+                  }
+                },
+                "emailMpin": {
+                  "summary": "Email + MPIN",
+                  "value": {
+                    "email": "test@example.com",
+                    "mpin": "123456"
+                  }
+                }
               }
             }
           }
@@ -356,6 +401,9 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/MpinResetRequest"
+              },
+              "example": {
+                "phone": "8282868389"
               }
             }
           }
@@ -368,13 +416,11 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "ok": {
-                      "type": "boolean"
-                    }
+                    "requestId": { "type": "string" }
                   }
                 },
                 "example": {
-                  "ok": true
+                  "requestId": "req_4c2a8c8a2f3b1d0e"
                 }
               }
             }
@@ -407,13 +453,11 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "ok": {
-                      "type": "boolean"
-                    }
+                    "success": { "type": "boolean" }
                   }
                 },
                 "example": {
-                  "ok": true
+                  "success": true
                 }
               }
             }
@@ -434,6 +478,9 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/AuthRefreshRequest"
+              },
+              "example": {
+                "refreshToken": "<refresh-token-from-login>"
               }
             }
           }
@@ -2706,19 +2753,41 @@
         ]
       },
       "AuthLoginRequest": {
-        "type": "object",
-        "required": [
-          "phone",
-          "password"
-        ],
-        "properties": {
-          "phone": {
-            "type": "string"
+        "description": "Login using either email or phone, plus either password or mpin.",
+        "oneOf": [
+          {
+            "type": "object",
+            "required": ["email", "password"],
+            "properties": {
+              "email": { "type": "string" },
+              "password": { "type": "string" }
+            }
           },
-          "password": {
-            "type": "string"
+          {
+            "type": "object",
+            "required": ["email", "mpin"],
+            "properties": {
+              "email": { "type": "string" },
+              "mpin": { "type": "string", "description": "6-digit MPIN" }
+            }
+          },
+          {
+            "type": "object",
+            "required": ["phone", "password"],
+            "properties": {
+              "phone": { "type": "string" },
+              "password": { "type": "string" }
+            }
+          },
+          {
+            "type": "object",
+            "required": ["phone", "mpin"],
+            "properties": {
+              "phone": { "type": "string" },
+              "mpin": { "type": "string", "description": "6-digit MPIN" }
+            }
           }
-        }
+        ]
       },
       "AuthMobileLoginRequest": {
         "type": "object",
@@ -2800,15 +2869,22 @@
       "AuthResponse": {
         "type": "object",
         "properties": {
-          "accessToken": {
-            "type": "string"
-          },
-          "refreshToken": {
-            "type": "string"
-          },
-          "user": {
-            "$ref": "#/components/schemas/User"
-          }
+          "accessToken": { "type": "string" },
+          "token": { "type": "string", "description": "Alias for accessToken (backward compatibility)." },
+          "expiresIn": { "type": "integer" },
+          "expiresAt": { "type": "string", "format": "date-time" },
+          "refreshToken": { "type": "string" },
+          "refreshExpiresAt": { "type": "string", "format": "date-time" },
+          "user": { "$ref": "#/components/schemas/User" }
+        },
+        "example": {
+          "accessToken": "<jwt>",
+          "token": "<jwt>",
+          "expiresIn": 900,
+          "expiresAt": "2025-12-15T10:15:00.000Z",
+          "refreshToken": "<refresh-token>",
+          "refreshExpiresAt": "2025-12-22T10:00:00.000Z",
+          "user": { "id": 1, "role": "influencer" }
         }
       },
       "User": {
