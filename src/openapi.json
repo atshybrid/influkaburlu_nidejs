@@ -2732,39 +2732,43 @@
         }
       },
       "MpinResetVerifyRequest": {
-        "type": "object",
         "description": "Accepts either `otp` or legacy `code` for the 6-digit verification value.",
-        "required": [
-          "phone",
-          "newMpin"
-        ],
-        "properties": {
-          "phone": {
-            "type": "string"
-          },
-          "otp": {
-            "type": "string",
-            "description": "6-digit OTP sent to the phone."
-          },
-          "code": {
-            "type": "string",
-            "description": "Alias for `otp` (supported for backward compatibility)."
-          },
-          "newMpin": {
-            "type": "string",
-            "description": "New 6-digit MPIN to set."
-          }
-        },
         "oneOf": [
           {
+            "type": "object",
             "required": [
-              "otp"
-            ]
+              "phone",
+              "otp",
+              "newMpin"
+            ],
+            "properties": {
+              "phone": { "type": "string" },
+              "otp": { "type": "string", "description": "6-digit OTP sent to the phone." },
+              "newMpin": { "type": "string", "description": "New 6-digit MPIN to set." }
+            },
+            "example": {
+              "phone": "8282868389",
+              "otp": "856349",
+              "newMpin": "123456"
+            }
           },
           {
+            "type": "object",
             "required": [
-              "code"
-            ]
+              "phone",
+              "code",
+              "newMpin"
+            ],
+            "properties": {
+              "phone": { "type": "string" },
+              "code": { "type": "string", "description": "Alias for `otp` (supported for backward compatibility)." },
+              "newMpin": { "type": "string", "description": "New 6-digit MPIN to set." }
+            },
+            "example": {
+              "phone": "8282868389",
+              "code": "856349",
+              "newMpin": "123456"
+            }
           }
         ]
       },
