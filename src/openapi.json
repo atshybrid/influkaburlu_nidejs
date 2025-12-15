@@ -3436,6 +3436,264 @@
         }
       }
     },
+    "/api/admin/landing/trusted": {
+      "get": {
+        "tags": [
+          "Landing"
+        ],
+        "summary": "Admin: get trusted section",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminLandingGetResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          },
+          "404": {
+            "description": "Not found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Landing"
+        ],
+        "summary": "Admin: upsert trusted section",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminLandingUpsertRequest"
+              },
+              "example": {
+                "data": {
+                  "logos": [
+                    { "src": "https://cdn.example.com/brands/alpha.svg", "alt": "Alpha" }
+                  ],
+                  "highlights": [
+                    { "k": "Avg ROAS lift", "v": "+42%" }
+                  ],
+                  "cases": [
+                    { "brand": "Alpha", "title": "3.9x ROAS on Reels", "metric": "+290% conv.", "platform": "Instagram" }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK (updated)",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AdminLandingUpsertResponse" } } }
+          },
+          "201": {
+            "description": "Created",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AdminLandingUpsertResponse" } } }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Landing"
+        ],
+        "summary": "Admin: delete trusted section",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": { "application/json": { "schema": { "type": "object", "properties": { "ok": { "type": "boolean" }, "key": { "type": "string" } } } } }
+          },
+          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "403": { "description": "Forbidden", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+        }
+      }
+    },
+    "/api/admin/landing/case-studies": {
+      "get": {
+        "tags": [
+          "Landing"
+        ],
+        "summary": "Admin: get case studies section",
+        "security": [
+          { "bearerAuth": [] }
+        ],
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AdminLandingGetResponse" } } } },
+          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "403": { "description": "Forbidden", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+        }
+      },
+      "put": {
+        "tags": [
+          "Landing"
+        ],
+        "summary": "Admin: upsert case studies section",
+        "security": [
+          { "bearerAuth": [] }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AdminLandingUpsertRequest" },
+              "example": {
+                "data": {
+                  "title": "Results brands can repeat",
+                  "subtitle": "Heart‑touching stories, measurable outcomes.",
+                  "items": [
+                    {
+                      "brand": "Orbit",
+                      "logo": "https://cdn.example.com/brands/orbit.png",
+                      "goal": "Conversions",
+                      "summary": "UGC + creator whitelisting + landing tests",
+                      "result": ["3.2x ROAS", "+41% CVR", "-18% CPA"],
+                      "image": "https://cdn.example.com/case-studies/orbit.jpg",
+                      "playbook": "UGC + creators + landing optimization",
+                      "brandSlug": "orbit"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "OK (updated)", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AdminLandingUpsertResponse" } } } },
+          "201": { "description": "Created", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AdminLandingUpsertResponse" } } } },
+          "400": { "description": "Bad request", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "403": { "description": "Forbidden", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Landing"
+        ],
+        "summary": "Admin: delete case studies section",
+        "security": [
+          { "bearerAuth": [] }
+        ],
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "object", "properties": { "ok": { "type": "boolean" }, "key": { "type": "string" } } } } } },
+          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "403": { "description": "Forbidden", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+        }
+      }
+    },
+    "/api/admin/landing/testimonials": {
+      "get": {
+        "tags": [
+          "Landing"
+        ],
+        "summary": "Admin: get testimonials section",
+        "security": [
+          { "bearerAuth": [] }
+        ],
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AdminLandingGetResponse" } } } },
+          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "403": { "description": "Forbidden", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+        }
+      },
+      "put": {
+        "tags": [
+          "Landing"
+        ],
+        "summary": "Admin: upsert testimonials section",
+        "security": [
+          { "bearerAuth": [] }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AdminLandingUpsertRequest" },
+              "example": {
+                "data": {
+                  "title": "What teams say",
+                  "subtitle": "Real feedback from brands and partners.",
+                  "items": [
+                    {
+                      "q": "Kaburlu helped us find perfect creators in days, not weeks.",
+                      "a": "Growth Lead",
+                      "company": "Orbit",
+                      "avatar": "https://cdn.example.com/people/growth-lead.jpg",
+                      "logo": "https://cdn.example.com/brands/orbit.png"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "OK (updated)", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AdminLandingUpsertResponse" } } } },
+          "201": { "description": "Created", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AdminLandingUpsertResponse" } } } },
+          "400": { "description": "Bad request", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "403": { "description": "Forbidden", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Landing"
+        ],
+        "summary": "Admin: delete testimonials section",
+        "security": [
+          { "bearerAuth": [] }
+        ],
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "object", "properties": { "ok": { "type": "boolean" }, "key": { "type": "string" } } } } } },
+          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "403": { "description": "Forbidden", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+        }
+      }
+    },
     "/api/admin/bunny/media/status-counts": {
       "get": {
         "tags": [
