@@ -57,9 +57,58 @@
     },
     {
       "name": "Landing"
+    },
+    {
+      "name": "Superadmin"
     }
   ],
   "paths": {
+    "/api/superadmin/dashboard": {
+      "get": {
+        "tags": [
+          "Superadmin"
+        ],
+        "summary": "Superadmin: dashboard summary",
+        "description": "Returns high-level counts for a superadmin dashboard.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuperadminDashboardResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/public/influencers": {
       "get": {
         "tags": [
@@ -4161,6 +4210,30 @@
       }
     },
     "schemas": {
+      "SuperadminDashboardResponse": {
+        "type": "object",
+        "properties": {
+          "ok": { "type": "boolean" },
+          "time": { "type": "string", "format": "date-time" },
+          "counts": {
+            "type": "object",
+            "properties": {
+              "usersTotal": { "type": "integer" },
+              "influencersTotal": { "type": "integer" },
+              "brandsTotal": { "type": "integer" },
+              "adsTotal": { "type": "integer" },
+              "applicationsTotal": { "type": "integer" },
+              "payoutsTotal": { "type": "integer" },
+              "pendingKycTotal": { "type": "integer" }
+            }
+          }
+        },
+        "required": [
+          "ok",
+          "time",
+          "counts"
+        ]
+      },
       "ErrorResponse": {
         "type": "object",
         "properties": {

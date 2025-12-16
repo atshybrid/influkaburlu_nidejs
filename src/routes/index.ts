@@ -18,6 +18,7 @@ const payCtrl = require('../controllers/paymentController');
 const requireAuth = require('../middleware/auth');
 const influencerCtrl = require('../controllers/influencerController');
 const landingCtrl = require('../controllers/landingController');
+const superadminCtrl = require('../controllers/superadminController');
 
 router.use('/auth', auth);
 router.use('/ads', ads);
@@ -40,25 +41,28 @@ router.get('/public/case-studies', landingCtrl.getCaseStudies);
 router.get('/public/testimonials', landingCtrl.getTestimonials);
 
 // Admin: landing content CRUD
-router.get('/admin/landing', requireAuth(['admin']), landingCtrl.adminList);
-router.post('/admin/landing', requireAuth(['admin']), landingCtrl.adminCreate);
-router.get('/admin/landing/:key', requireAuth(['admin']), landingCtrl.adminGet);
-router.post('/admin/landing/:key', requireAuth(['admin']), landingCtrl.adminCreateByKey);
-router.put('/admin/landing/:key', requireAuth(['admin']), landingCtrl.adminUpsert);
-router.patch('/admin/landing/:key', requireAuth(['admin']), landingCtrl.adminPatch);
-router.delete('/admin/landing/:key', requireAuth(['admin']), landingCtrl.adminDelete);
+router.get('/admin/landing', requireAuth(['admin', 'superadmin']), landingCtrl.adminList);
+router.post('/admin/landing', requireAuth(['admin', 'superadmin']), landingCtrl.adminCreate);
+router.get('/admin/landing/:key', requireAuth(['admin', 'superadmin']), landingCtrl.adminGet);
+router.post('/admin/landing/:key', requireAuth(['admin', 'superadmin']), landingCtrl.adminCreateByKey);
+router.put('/admin/landing/:key', requireAuth(['admin', 'superadmin']), landingCtrl.adminUpsert);
+router.patch('/admin/landing/:key', requireAuth(['admin', 'superadmin']), landingCtrl.adminPatch);
+router.delete('/admin/landing/:key', requireAuth(['admin', 'superadmin']), landingCtrl.adminDelete);
 
 // Bunny admin/public
-router.get('/admin/bunny/videos', requireAuth(['admin']), bunnyCtrl.adminListVideos);
-router.delete('/admin/bunny/videos/:guid', requireAuth(['admin']), bunnyCtrl.adminDeleteVideo);
-router.get('/admin/bunny/media/status-counts', requireAuth(['admin']), bunnyCtrl.mediaStatusCounts);
+router.get('/admin/bunny/videos', requireAuth(['admin', 'superadmin']), bunnyCtrl.adminListVideos);
+router.delete('/admin/bunny/videos/:guid', requireAuth(['admin', 'superadmin']), bunnyCtrl.adminDeleteVideo);
+router.get('/admin/bunny/media/status-counts', requireAuth(['admin', 'superadmin']), bunnyCtrl.mediaStatusCounts);
 // Admin KYC
-router.get('/admin/kyc', requireAuth(['admin']), kycCtrl.adminList);
-router.get('/admin/kyc/:influencerId', requireAuth(['admin']), kycCtrl.adminGet);
-router.put('/admin/kyc/:influencerId/status', requireAuth(['admin']), kycCtrl.adminSetStatus);
+router.get('/admin/kyc', requireAuth(['admin', 'superadmin']), kycCtrl.adminList);
+router.get('/admin/kyc/:influencerId', requireAuth(['admin', 'superadmin']), kycCtrl.adminGet);
+router.put('/admin/kyc/:influencerId/status', requireAuth(['admin', 'superadmin']), kycCtrl.adminSetStatus);
 // Admin Payments
-router.get('/admin/payments', requireAuth(['admin']), payCtrl.adminList);
-router.put('/admin/payments/:id/status', requireAuth(['admin']), payCtrl.adminSetStatus);
+router.get('/admin/payments', requireAuth(['admin', 'superadmin']), payCtrl.adminList);
+router.put('/admin/payments/:id/status', requireAuth(['admin', 'superadmin']), payCtrl.adminSetStatus);
+
+// Superadmin dashboard
+router.get('/superadmin/dashboard', requireAuth(['superadmin']), superadminCtrl.dashboard);
 router.get('/posts/:idUlid/playback', bunnyCtrl.postPlayback);
 router.get('/bunny/videos/:guid/status', bunnyCtrl.videoStatus);
 
