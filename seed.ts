@@ -5,6 +5,20 @@ const { seedLocations } = require('./src/controllers/seedLocations');
 async function seed() {
   await db.sequelize.sync({ force: true });
   await seedLocations();
+
+  const india = await db.Country.findOne({ where: { code2: 'IN' } });
+  const telangana = await db.State.findOne({ where: { code: 'TG' } });
+  const andhra = await db.State.findOne({ where: { code: 'AP' } });
+  const hyderabadDistrict = telangana
+    ? await db.District.findOne({ where: { stateId: telangana.id, name: 'Hyderabad' } })
+    : null;
+
+  if (!india || !telangana) {
+    throw new Error('Seed locations missing India/Telangana. Check src/data/countries.json and src/data/states_IN.json');
+  }
+  if (!hyderabadDistrict) {
+    throw new Error('Seed locations missing Hyderabad district for Telangana. Check src/data/districts_TG.json');
+  }
   // Seed languages table from static data
   try {
     const langs = require('./src/data/languages.json');
@@ -28,10 +42,10 @@ async function seed() {
   const influencer = await db.Influencer.create({
     userId: influencerUser.id,
     handle: '@demo',
-    countryId: 101,
-    stateId: 36,
-    stateIds: [36, 29],
-    districtId: 540,
+    countryId: india.id,
+    stateId: telangana.id,
+    stateIds: [telangana.id].concat(andhra ? [andhra.id] : []),
+    districtId: hyderabadDistrict.id,
     addressLine1: 'Flat 12, Sunrise Residency',
     addressLine2: 'Madhapur, Near Metro',
     postalCode: '500081',
