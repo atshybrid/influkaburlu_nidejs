@@ -2,6 +2,11 @@ const fs = require('fs');
 const path = require('path');
 const { Country, State, District } = require('../models');
 
+function readJsonIfExists(filePath: string){
+  if (!fs.existsSync(filePath)) return null;
+  return JSON.parse(fs.readFileSync(filePath));
+}
+
 async function seedLocations(){
   const countries = JSON.parse(fs.readFileSync(path.join(__dirname, '../data/countries.json')));
   for (const c of countries){
@@ -10,8 +15,16 @@ async function seedLocations(){
       const states = JSON.parse(fs.readFileSync(path.join(__dirname, '../data/states_IN.json')));
       for (const s of states){
         const state = await State.create({ ...s, countryId: country.id });
-        if (s.code === 'TG'){
-          const districts = JSON.parse(fs.readFileSync(path.join(__dirname, '../data/districts_TG.json')));
+
+        // Preferred: per-state district files (src/data/districts_IN/<STATE_CODE>.json)
+        let districts = readJsonIfExists(path.join(__dirname, `../data/districts_IN/${s.code}.json`));
+
+        // Backward compatible: legacy Telangana districts file
+        if (!districts && s.code === 'TG'){
+          districts = readJsonIfExists(path.join(__dirname, '../data/districts_TG.json'));
+        }
+
+        if (Array.isArray(districts)){
           for (const d of districts){
             await District.create({ ...d, stateId: state.id });
           }
