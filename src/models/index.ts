@@ -51,6 +51,7 @@ const InfluencerKyc = require('./influencerKyc')(sequelize, Sequelize.DataTypes)
 const InfluencerPaymentMethod = require('./influencerPaymentMethod')(sequelize, Sequelize.DataTypes);
 const ProfilePack = require('./profilePack')(sequelize, Sequelize.DataTypes);
 const LandingContent = require('./landingContent')(sequelize, Sequelize.DataTypes);
+const SeoPage = require('./seoPage')(sequelize, Sequelize.DataTypes);
 const { Country, State, District } = require('./location')(sequelize, Sequelize.DataTypes);
 const { Role, UserRole } = require('./role')(sequelize, Sequelize.DataTypes);
 
@@ -91,6 +92,34 @@ async function ensureInfluencerAdPricingColumn() {
 }
 
 ensureInfluencerAdPricingColumn().catch(() => {});
+
+async function ensureInfluencerSeoColumns() {
+	const qi = sequelize.getQueryInterface();
+	try {
+		await sequelize.query('ALTER TABLE "Influencers" ADD COLUMN IF NOT EXISTS "seoTitle" VARCHAR(255)');
+		await sequelize.query('ALTER TABLE "Influencers" ADD COLUMN IF NOT EXISTS "seoDescription" TEXT');
+		await sequelize.query('ALTER TABLE "Influencers" ADD COLUMN IF NOT EXISTS "seoKeywords" TEXT');
+		await sequelize.query('ALTER TABLE "Influencers" ADD COLUMN IF NOT EXISTS "slug" VARCHAR(255)');
+		await sequelize.query('ALTER TABLE "Influencers" ADD COLUMN IF NOT EXISTS "canonicalUrl" VARCHAR(255)');
+		await sequelize.query('ALTER TABLE "Influencers" ADD COLUMN IF NOT EXISTS "schemaJson" JSONB DEFAULT \'{}\'::jsonb');
+		await sequelize.query('ALTER TABLE "Influencers" ADD COLUMN IF NOT EXISTS "indexed" BOOLEAN DEFAULT false');
+		// Unique slug index (best-effort; allows multiple NULL)
+		await sequelize.query('CREATE UNIQUE INDEX IF NOT EXISTS "Influencers_slug_unique" ON "Influencers"("slug") WHERE "slug" IS NOT NULL');
+	} catch (e) {
+		try {
+			const table = await qi.describeTable('Influencers');
+			if (!table.seoTitle) await qi.addColumn('Influencers', 'seoTitle', { type: Sequelize.DataTypes.STRING(255) });
+			if (!table.seoDescription) await qi.addColumn('Influencers', 'seoDescription', { type: Sequelize.DataTypes.TEXT });
+			if (!table.seoKeywords) await qi.addColumn('Influencers', 'seoKeywords', { type: Sequelize.DataTypes.TEXT });
+			if (!table.slug) await qi.addColumn('Influencers', 'slug', { type: Sequelize.DataTypes.STRING(255) });
+			if (!table.canonicalUrl) await qi.addColumn('Influencers', 'canonicalUrl', { type: Sequelize.DataTypes.STRING(255) });
+			if (!table.schemaJson) await qi.addColumn('Influencers', 'schemaJson', { type: Sequelize.DataTypes.JSONB, defaultValue: {} });
+			if (!table.indexed) await qi.addColumn('Influencers', 'indexed', { type: Sequelize.DataTypes.BOOLEAN, defaultValue: false });
+		} catch (_) {}
+	}
+}
+
+ensureInfluencerSeoColumns().catch(() => {});
 
 async function ensureInfluencerProfilePicColumn() {
 	const qi = sequelize.getQueryInterface();
@@ -243,6 +272,27 @@ async function ensureLandingContentTable() {
 
 ensureLandingContentTable().catch(() => {});
 
+async function ensureSeoPagesTable() {
+	const qi = sequelize.getQueryInterface();
+	try {
+		await qi.describeTable('SeoPages');
+	} catch (e) {
+		await qi.createTable('SeoPages', {
+			id: { type: Sequelize.DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+			slug: { type: Sequelize.DataTypes.STRING(255), allowNull: false, unique: true },
+			metaTitle: { type: Sequelize.DataTypes.STRING(255) },
+			metaDescription: { type: Sequelize.DataTypes.TEXT },
+			metaKeywords: { type: Sequelize.DataTypes.TEXT },
+			ogImage: { type: Sequelize.DataTypes.STRING(512) },
+			ulid: { type: Sequelize.DataTypes.STRING(26), allowNull: false, unique: true },
+			createdAt: { type: Sequelize.DataTypes.DATE, allowNull: false, defaultValue: Sequelize.fn('NOW') },
+			updatedAt: { type: Sequelize.DataTypes.DATE, allowNull: false, defaultValue: Sequelize.fn('NOW') },
+		});
+	}
+}
+
+ensureSeoPagesTable().catch(() => {});
+
 async function ensureInfluencerPricingTable() {
 	const qi = sequelize.getQueryInterface();
 	try {
@@ -317,7 +367,7 @@ InfluencerPaymentMethod.belongsTo(Influencer, { foreignKey: 'influencerId' });
 Influencer.hasMany(ProfilePack, { foreignKey: 'influencerId' });
 ProfilePack.belongsTo(Influencer, { foreignKey: 'influencerId' });
 
-module.exports = { sequelize, User, Influencer, Brand, Ad, Application, Payout, OtpRequest, RefreshToken, Post, InfluencerAdMedia, InfluencerPricing, InfluencerKyc, InfluencerPaymentMethod, ProfilePack, LandingContent };
+module.exports = { sequelize, User, Influencer, Brand, Ad, Application, Payout, OtpRequest, RefreshToken, Post, InfluencerAdMedia, InfluencerPricing, InfluencerKyc, InfluencerPaymentMethod, ProfilePack, LandingContent, SeoPage };
 module.exports.Language = Language;
 module.exports.Category = Category;
 module.exports.InfluencerCategory = InfluencerCategory;

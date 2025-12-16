@@ -12,6 +12,7 @@ const brands = require('./brands');
 const uploads = require('./uploads');
 const discovery = require('./discovery');
 const categories = require('./categories');
+const seo = require('./seo');
 const bunnyCtrl = require('../controllers/bunnyController');
 const kycCtrl = require('../controllers/kycController');
 const payCtrl = require('../controllers/paymentController');
@@ -19,6 +20,7 @@ const requireAuth = require('../middleware/auth');
 const influencerCtrl = require('../controllers/influencerController');
 const landingCtrl = require('../controllers/landingController');
 const superadminCtrl = require('../controllers/superadminController');
+const seoCtrl = require('../controllers/seoController');
 
 router.use('/auth', auth);
 router.use('/ads', ads);
@@ -32,6 +34,7 @@ router.use('/brands', brands);
 router.use('/uploads', uploads);
 router.use('/discovery', discovery);
 router.use('/categories', categories);
+router.use('/seo', seo);
 
 // Public landing page
 router.get('/public/influencers', influencerCtrl.publicLandingList);
@@ -63,6 +66,10 @@ router.put('/admin/payments/:id/status', requireAuth(['admin', 'superadmin']), p
 
 // Superadmin dashboard
 router.get('/superadmin/dashboard', requireAuth(['superadmin']), superadminCtrl.dashboard);
+
+// Admin: SEO management
+router.put('/admin/seo/influencer/:id', requireAuth(['admin', 'superadmin']), seoCtrl.adminUpsertInfluencerSeo);
+router.put('/admin/seo/page/:slug', requireAuth(['admin', 'superadmin']), seoCtrl.adminUpsertPageSeo);
 router.get('/posts/:idUlid/playback', bunnyCtrl.postPlayback);
 router.get('/bunny/videos/:guid/status', bunnyCtrl.videoStatus);
 

@@ -3,6 +3,7 @@ const { Op } = require('sequelize');
 const { uploadBuffer } = require('../utils/r2');
 const fs = require('fs');
 const crypto = require('crypto');
+const { slugify } = require('../utils/slugify');
 
 const ALLOWED_BADGES = ['Ready', 'Fit', 'Pro', 'Prime', 'Elite'];
 
@@ -267,7 +268,21 @@ exports.update = async (req, res) => {
     delete body.stateId;
     delete body.states;
   }
+
+  // Slug handling (SEO)
+  if (body.slug != null) {
+    const s = slugify(body.slug);
+    if (!s) return res.status(400).json({ error: 'invalid_slug' });
+    body.slug = s;
+  }
+
   Object.assign(infl, body);
+
+  // If slug not provided but handle exists, auto-generate once.
+  if (!infl.slug && infl.handle) {
+    infl.slug = slugify(String(infl.handle).replace(/^@/, ''));
+  }
+
   await infl.save();
   res.json({ ...infl.toJSON(), idUlid: infl.ulid });
 };

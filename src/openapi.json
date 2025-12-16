@@ -63,6 +63,161 @@
     }
   ],
   "paths": {
+    "/api/seo/influencer/{slug}": {
+      "get": {
+        "tags": [
+          "SEO"
+        ],
+        "summary": "Get influencer SEO by slug",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "title": { "type": "string" },
+                    "description": { "type": "string" },
+                    "canonical": { "type": ["string", "null"] },
+                    "schema": { "type": "object" }
+                  },
+                  "required": ["title", "description", "canonical", "schema"]
+                }
+              }
+            }
+          },
+          "404": { "description": "Not found" }
+        }
+      }
+    },
+    "/api/seo/page/{slug}": {
+      "get": {
+        "tags": [
+          "SEO"
+        ],
+        "summary": "Get page/blog SEO by slug",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "metaTitle": { "type": "string" },
+                    "metaDescription": { "type": "string" },
+                    "metaKeywords": { "type": "string" },
+                    "ogImage": { "type": ["string", "null"] },
+                    "slug": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "404": { "description": "Not found" }
+        }
+      }
+    },
+    "/api/admin/seo/influencer/{id}": {
+      "put": {
+        "tags": [
+          "SEO"
+        ],
+        "summary": "Upsert influencer SEO (admin)",
+        "security": [
+          { "bearerAuth": [] }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Influencer id (ULID preferred; numeric DB id also supported)"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "slug": { "type": "string" },
+                  "seoTitle": { "type": "string" },
+                  "seoDescription": { "type": "string" },
+                  "seoKeywords": { "type": "string" },
+                  "canonicalUrl": { "type": "string" },
+                  "schemaJson": { "type": "object" },
+                  "indexed": { "type": "boolean" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "OK" },
+          "409": { "description": "Slug already taken" }
+        }
+      }
+    },
+    "/api/admin/seo/page/{slug}": {
+      "put": {
+        "tags": [
+          "SEO"
+        ],
+        "summary": "Upsert page/blog SEO (admin)",
+        "security": [
+          { "bearerAuth": [] }
+        ],
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "metaTitle": { "type": "string" },
+                  "metaDescription": { "type": "string" },
+                  "metaKeywords": { "type": "string" },
+                  "ogImage": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "OK" }
+        }
+      }
+    },
     "/api/superadmin/dashboard": {
       "get": {
         "tags": [

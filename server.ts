@@ -42,6 +42,44 @@ app.get('/openapi.json', (req, res) => {
   res.json(openapi);
 });
 
+// SEO: robots.txt
+app.get('/robots.txt', (req, res) => {
+  const base = String(process.env.BASE_URL || '').trim().replace(/\/$/, '');
+  const sitemapUrl = base ? `${base}/sitemap.xml` : '/sitemap.xml';
+  res.type('text/plain');
+  res.send(`User-agent: *\nAllow: /\nDisallow: /admin\nSitemap: ${sitemapUrl}\n`);
+});
+
+// SEO: sitemap.xml
+app.get('/sitemap.xml', async (req, res) => {
+  try {
+    const base = String(process.env.BASE_URL || '').trim().replace(/\/$/, '');
+    const hostname = base || `${req.protocol}://${req.get('host')}`;
+    const { SitemapStream, streamToPromise } = require('sitemap');
+    const { Influencer } = require('./src/models');
+
+    const rows = await Influencer.findAll({ attributes: ['slug', 'updatedAt'] });
+    const smStream = new SitemapStream({ hostname });
+
+    for (const i of rows) {
+      if (!i.slug) continue;
+      smStream.write({
+        url: `/influencer/${i.slug}`,
+        changefreq: 'weekly',
+        priority: 0.9,
+        lastmod: i.updatedAt ? new Date(i.updatedAt).toISOString() : undefined,
+      });
+    }
+    smStream.end();
+
+    const xml = await streamToPromise(smStream).then((d) => d.toString());
+    res.type('application/xml');
+    res.send(xml);
+  } catch (err) {
+    res.status(500).json({ error: 'server_error', details: err.message });
+  }
+});
+
 // Centralized error handler (ensures API errors return JSON, not HTML)
 // This is especially important for multipart/busboy/multer errors like "Unexpected end of form".
 app.use((err, req, res, next) => {

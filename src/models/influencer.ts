@@ -21,6 +21,14 @@ module.exports = (sequelize, DataTypes) => {
     profilePackUrl: { type: DataTypes.STRING },
     verificationStatus: { type: DataTypes.STRING, defaultValue: 'none' },
     badges: { type: DataTypes.JSONB, defaultValue: [] },
+    // SEO fields
+    seoTitle: { type: DataTypes.STRING(255) },
+    seoDescription: { type: DataTypes.TEXT },
+    seoKeywords: { type: DataTypes.TEXT },
+    slug: { type: DataTypes.STRING(255), unique: true },
+    canonicalUrl: { type: DataTypes.STRING(255) },
+    schemaJson: { type: DataTypes.JSONB, defaultValue: {} },
+    indexed: { type: DataTypes.BOOLEAN, defaultValue: false },
     adPricing: { type: DataTypes.JSONB, defaultValue: {} },
     ulid: { type: DataTypes.STRING(26), allowNull: false, unique: true },
   }, {
