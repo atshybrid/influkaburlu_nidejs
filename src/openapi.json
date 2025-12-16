@@ -4326,12 +4326,48 @@
           "createdAt": { "type": "string", "format": "date-time" }
         }
       },
-      "AdminLandingPatchRequest": {
+      "JsonPatchOperation": {
         "type": "object",
-        "description": "Partial update payload. Body can be any JSON object, or `{ data: ... }`.",
         "properties": {
-          "data": { "type": "object" }
-        }
+          "op": { "type": "string", "enum": ["add", "replace", "remove"] },
+          "path": { "type": "string", "description": "JSON Pointer path (RFC6901). Use '/logos/-' to append to the logos array." },
+          "value": { "description": "Required for add/replace.", "nullable": true }
+        },
+        "required": ["op", "path"]
+      },
+      "AdminLandingPatchRequest": {
+        "description": "Partial update payload. Supports either (1) shallow merge of an object, or (2) JSON Patch operations array for array appends/replacements.",
+        "oneOf": [
+          {
+            "type": "object",
+            "description": "Shallow merge. Body can be any JSON object, or `{ data: ... }`.",
+            "properties": {
+              "data": { "type": "object" }
+            },
+            "example": {
+              "data": {
+                "highlights": [
+                  { "k": "Avg ROAS lift", "v": "+42%" }
+                ]
+              }
+            }
+          },
+          {
+            "type": "array",
+            "description": "JSON Patch (RFC6902) operation list. Useful to append to arrays without overwriting them.",
+            "items": { "$ref": "#/components/schemas/JsonPatchOperation" },
+            "example": [
+              {
+                "op": "add",
+                "path": "/logos/-",
+                "value": {
+                  "src": "https://cdn.example.com/brands/vedic-hivery.jpg",
+                  "alt": "Vedic Hivery"
+                }
+              }
+            ]
+          }
+        ]
       },
       "AdminLandingPatchResponse": {
         "type": "object",
