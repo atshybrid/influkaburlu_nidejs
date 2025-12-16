@@ -1564,8 +1564,17 @@
         "tags": ["Admin"],
         "summary": "List influencer KYC by status",
         "security": [ { "bearerAuth": [] } ],
-        "parameters": [ { "name": "status", "in": "query", "schema": { "type": "string" } } ],
-        "responses": { "200": { "description": "OK" } }
+        "parameters": [
+          { "name": "status", "in": "query", "required": false, "schema": { "type": "string", "enum": ["pending", "verified", "rejected"] }, "description": "Optional. If omitted, returns all statuses. Case-insensitive; supports synonyms like 'Approve' -> 'verified'." },
+          { "name": "limit", "in": "query", "required": false, "schema": { "type": "integer", "minimum": 1, "maximum": 200, "default": 50 } },
+          { "name": "offset", "in": "query", "required": false, "schema": { "type": "integer", "minimum": 0, "default": 0 } }
+        ],
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AdminKycListResponse" } } } },
+          "400": { "description": "Bad Request", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "403": { "description": "Forbidden", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+        }
       }
     },
     "/api/admin/kyc/{influencerId}": {
@@ -1583,8 +1592,26 @@
         "summary": "Set KYC status (verified/rejected/pending)",
         "security": [ { "bearerAuth": [] } ],
         "parameters": [ { "name": "influencerId", "in": "path", "required": true, "schema": { "type": "integer" } } ],
-        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "properties": { "status": { "type": "string" }, "reason": { "type": "string" } }, "required": ["status"] } } } },
-        "responses": { "200": { "description": "OK" }, "404": { "description": "Not found" } }
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AdminKycSetStatusRequest" },
+              "examples": {
+                "approveAlias": { "summary": "Approve (alias)", "value": { "status": "Approve", "reason": "Looks good" } },
+                "verified": { "summary": "Verified", "value": { "status": "verified" } },
+                "rejected": { "summary": "Rejected", "value": { "status": "rejected", "reason": "PAN mismatch" } }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AdminKycItem" } } } },
+          "400": { "description": "Bad Request", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "403": { "description": "Forbidden", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+        }
       }
     },
     
@@ -1595,10 +1622,49 @@
       "put": { "tags": ["Influencers"], "summary": "Set preferred payment method", "security": [ { "bearerAuth": [] } ], "parameters": [ { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } } ], "responses": { "200": { "description": "OK" }, "404": { "description": "Not found" } } }
     },
     "/api/admin/payments": {
-      "get": { "tags": ["Admin"], "summary": "List payment methods", "security": [ { "bearerAuth": [] } ], "parameters": [ { "name": "status", "in": "query", "schema": { "type": "string" } } ], "responses": { "200": { "description": "OK" } } }
+      "get": {
+        "tags": ["Admin"],
+        "summary": "List payment methods",
+        "security": [ { "bearerAuth": [] } ],
+        "parameters": [
+          { "name": "status", "in": "query", "required": false, "schema": { "type": "string", "enum": ["unverified", "verified", "rejected"] } },
+          { "name": "limit", "in": "query", "required": false, "schema": { "type": "integer", "minimum": 1, "maximum": 200, "default": 50 } },
+          { "name": "offset", "in": "query", "required": false, "schema": { "type": "integer", "minimum": 0, "default": 0 } }
+        ],
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AdminPaymentsListResponse" } } } },
+          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "403": { "description": "Forbidden", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+        }
+      }
     },
     "/api/admin/payments/{id}/status": {
-      "put": { "tags": ["Admin"], "summary": "Set payment method status", "security": [ { "bearerAuth": [] } ], "parameters": [ { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } } ], "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "properties": { "status": { "type": "string" } }, "required": ["status"] } } } }, "responses": { "200": { "description": "OK" }, "404": { "description": "Not found" } } }
+      "put": {
+        "tags": ["Admin"],
+        "summary": "Set payment method status",
+        "security": [ { "bearerAuth": [] } ],
+        "parameters": [ { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } } ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AdminPaymentSetStatusRequest" },
+              "examples": {
+                "approveAlias": { "summary": "Approve (alias)", "value": { "status": "Approve" } },
+                "verified": { "summary": "Verified", "value": { "status": "verified" } },
+                "rejected": { "summary": "Rejected", "value": { "status": "rejected" } }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "object", "properties": { "ok": { "type": "boolean" } } } } } },
+          "400": { "description": "Bad Request", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "403": { "description": "Forbidden", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+        }
+      }
     },
     "/api/influencers/me/payment-methods": {
       "get": {
@@ -4242,8 +4308,82 @@
           },
           "details": {
             "type": "string"
+          },
+          "allowed": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         }
+      },
+      "AdminKycItem": {
+        "type": "object",
+        "description": "Influencer KYC record (admin view). PAN is masked; Aadhaar hash is omitted.",
+        "properties": {
+          "id": { "type": "integer" },
+          "influencerId": { "type": "integer" },
+          "fullName": { "type": ["string", "null"] },
+          "dob": { "type": ["string", "null"], "description": "YYYY-MM-DD" },
+          "pan": { "type": ["string", "null"] },
+          "aadhaarLast4": { "type": ["string", "null"] },
+          "addressLine1": { "type": ["string", "null"] },
+          "addressLine2": { "type": ["string", "null"] },
+          "postalCode": { "type": ["string", "null"] },
+          "city": { "type": ["string", "null"] },
+          "state": { "type": ["string", "null"] },
+          "country": { "type": ["string", "null"] },
+          "status": { "type": "string", "enum": ["pending", "verified", "rejected"] },
+          "verifiedAt": { "type": ["string", "null"], "format": "date-time" },
+          "documents": { "type": "object" },
+          "consentTs": { "type": ["string", "null"], "format": "date-time" },
+          "ulid": { "type": ["string", "null"] },
+          "createdAt": { "type": ["string", "null"], "format": "date-time" },
+          "updatedAt": { "type": ["string", "null"], "format": "date-time" }
+        }
+      },
+      "AdminKycListResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/AdminKycItem" }
+          }
+        }
+      },
+      "AdminKycSetStatusRequest": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "Accepted values are case-insensitive. Common synonyms like 'Approve'/'Approved' map to 'verified'.",
+            "enum": ["pending", "verified", "rejected"]
+          },
+          "reason": { "type": "string" }
+        },
+        "required": ["status"],
+        "example": { "status": "verified", "reason": "KYC verified" }
+      },
+      "AdminPaymentsListResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/PaymentMethod" }
+          }
+        }
+      },
+      "AdminPaymentSetStatusRequest": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "Accepted values are case-insensitive. Common synonyms like 'Approve'/'Approved' map to 'verified'.",
+            "enum": ["unverified", "verified", "rejected"]
+          }
+        },
+        "required": ["status"],
+        "example": { "status": "verified" }
       },
       "LandingTrusted": {
         "type": "object",

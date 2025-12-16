@@ -1,6 +1,16 @@
 const { Influencer, InfluencerKyc } = require('../models');
 const bcrypt = require('bcryptjs');
 
+function normalizeKycStatus(input) {
+  if (input === undefined || input === null) return null;
+  const s = String(input).trim().toLowerCase();
+  if (!s) return null;
+  if (['verified', 'verify', 'approve', 'approved', 'approveed', 'accept', 'accepted', 'ok'].includes(s)) return 'verified';
+  if (['rejected', 'reject', 'deny', 'denied', 'decline', 'declined'].includes(s)) return 'rejected';
+  if (['pending', 'hold', 'inreview', 'in_review', 'in review', 'review'].includes(s)) return 'pending';
+  return null;
+}
+
 function maskPan(pan) {
   if (!pan) return null;
   return pan.replace(/.(?=.{4})/g, '*');
@@ -79,8 +89,10 @@ exports.updateMe = async (req, res) => {
 // Admin: list KYC by status
 exports.adminList = async (req, res) => {
   try {
-    const { status = 'pending', limit = 50, offset = 0 } = req.query;
-    const where = status ? { status } : {};
+    const { status, limit = 50, offset = 0 } = req.query;
+    const normalized = status ? normalizeKycStatus(status) : null;
+    if (status && !normalized) return res.status(400).json({ error: 'invalid_status', allowed: ['verified', 'rejected', 'pending'] });
+    const where = normalized ? { status: normalized } : {};
     const rows = await InfluencerKyc.findAll({ where, order: [['updatedAt','DESC']], limit: parseInt(limit,10), offset: parseInt(offset,10) });
     const items = rows.map(r => { const o = r.toJSON(); o.pan = maskPan(o.pan); delete o.aadhaarHash; return o; });
     res.json({ items });
@@ -101,11 +113,12 @@ exports.adminSetStatus = async (req, res) => {
   try {
     const { influencerId } = req.params;
     const { status, reason } = req.body || {};
-    if (!['verified','rejected','pending'].includes(status)) return res.status(400).json({ error: 'invalid_status' });
+    const normalized = normalizeKycStatus(status);
+    if (!normalized) return res.status(400).json({ error: 'invalid_status', allowed: ['verified', 'rejected', 'pending'] });
     const row = await InfluencerKyc.findOne({ where: { influencerId } });
     if (!row) return res.status(404).json({ error: 'not_found' });
-    row.status = status;
-    row.verifiedAt = status === 'verified' ? new Date() : null;
+    row.status = normalized;
+    row.verifiedAt = normalized === 'verified' ? new Date() : null;
     const docs = Object.assign({}, row.documents||{});
     if (reason) docs.adminReason = reason;
     row.documents = docs;

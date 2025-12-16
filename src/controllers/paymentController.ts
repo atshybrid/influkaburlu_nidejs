@@ -1,5 +1,15 @@
 const { Influencer, InfluencerPaymentMethod } = require('../models');
 
+function normalizePaymentStatus(input) {
+  if (input === undefined || input === null) return null;
+  const s = String(input).trim().toLowerCase();
+  if (!s) return null;
+  if (['verified', 'verify', 'approve', 'approved', 'accept', 'accepted', 'ok'].includes(s)) return 'verified';
+  if (['rejected', 'reject', 'deny', 'denied', 'decline', 'declined'].includes(s)) return 'rejected';
+  if (['unverified', 'unverify', 'pending', 'hold', 'inreview', 'in_review', 'in review', 'review'].includes(s)) return 'unverified';
+  return null;
+}
+
 function maskAccount(num) {
   if (!num) return null;
   const n = String(num);
@@ -99,7 +109,14 @@ exports.adminList = async (req, res) => {
   try {
     const { status, limit = 50, offset = 0 } = req.query;
     const where = status ? { status } : {};
-    const items = await InfluencerPaymentMethod.findAll({ where, order: [['updatedAt','DESC']], limit: parseInt(limit,10), offset: parseInt(offset,10) });
+    const rows = await InfluencerPaymentMethod.findAll({ where, order: [['updatedAt','DESC']], limit: parseInt(limit,10), offset: parseInt(offset,10) });
+    const items = rows.map(m => {
+      const obj = m.toJSON();
+      obj.bankAccountNumberMasked = maskAccount(obj.bankAccountNumber);
+      obj.upiIdMasked = maskUpi(obj.upiId);
+      delete obj.bankAccountNumber;
+      return obj;
+    });
     res.json({ items });
   } catch (e) { res.status(500).json({ error: 'server_error' }); }
 };
@@ -109,10 +126,11 @@ exports.adminSetStatus = async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body || {};
-    if (!['unverified','verified','rejected'].includes(status)) return res.status(400).json({ error: 'invalid_status' });
+    const normalized = normalizePaymentStatus(status);
+    if (!normalized) return res.status(400).json({ error: 'invalid_status', allowed: ['unverified', 'verified', 'rejected'] });
     const row = await InfluencerPaymentMethod.findByPk(id);
     if (!row) return res.status(404).json({ error: 'not_found' });
-    row.status = status;
+    row.status = normalized;
     await row.save();
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: 'server_error' }); }
