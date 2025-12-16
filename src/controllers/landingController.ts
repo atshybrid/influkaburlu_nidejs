@@ -67,6 +67,43 @@ exports.adminList = async (req, res) => {
   }
 };
 
+// Admin: create a new landing content key
+exports.adminCreate = async (req, res) => {
+  try {
+    const { key, data } = req.body || {};
+    if (!key || typeof key !== 'string') return res.status(400).json({ error: 'key_required' });
+    if (!data || typeof data !== 'object') return res.status(400).json({ error: 'data_required' });
+
+    const exists = await LandingContent.findOne({ where: { key } });
+    if (exists) return res.status(409).json({ error: 'already_exists' });
+
+    const created = await LandingContent.create({ key, data });
+    return res.status(201).json({ ok: true, key: created.key, data: created.data, createdAt: created.createdAt });
+  } catch (err) {
+    return res.status(500).json({ error: 'server_error', details: err.message });
+  }
+};
+
+// Admin: create a landing content entry by key from URL (e.g. POST /api/admin/landing/trusted)
+exports.adminCreateByKey = async (req, res) => {
+  try {
+    const { key } = req.params;
+    if (!key || typeof key !== 'string') return res.status(400).json({ error: 'key_required' });
+
+    const payload = req.body;
+    const data = (payload && Object.prototype.hasOwnProperty.call(payload, 'data')) ? payload.data : payload;
+    if (!data || typeof data !== 'object') return res.status(400).json({ error: 'data_required' });
+
+    const exists = await LandingContent.findOne({ where: { key } });
+    if (exists) return res.status(409).json({ error: 'already_exists' });
+
+    const created = await LandingContent.create({ key, data });
+    return res.status(201).json({ ok: true, key: created.key, data: created.data, createdAt: created.createdAt });
+  } catch (err) {
+    return res.status(500).json({ error: 'server_error', details: err.message });
+  }
+};
+
 exports.adminGet = async (req, res) => {
   try {
     const { key } = req.params;
@@ -99,6 +136,29 @@ exports.adminUpsert = async (req, res) => {
 
     const created = await LandingContent.create({ key, data });
     return res.status(201).json({ ok: true, key, data: created.data, createdAt: created.createdAt });
+  } catch (err) {
+    return res.status(500).json({ error: 'server_error', details: err.message });
+  }
+};
+
+// Admin: update existing landing content (shallow merge)
+exports.adminPatch = async (req, res) => {
+  try {
+    const { key } = req.params;
+    if (!key) return res.status(400).json({ error: 'key_required' });
+
+    const payload = req.body;
+    const patchData = (payload && Object.prototype.hasOwnProperty.call(payload, 'data')) ? payload.data : payload;
+    if (!patchData || typeof patchData !== 'object') return res.status(400).json({ error: 'data_required' });
+
+    const row = await LandingContent.findOne({ where: { key } });
+    if (!row) return res.status(404).json({ error: 'not_found' });
+
+    const base = (row.data && typeof row.data === 'object') ? row.data : {};
+    row.data = Object.assign({}, base, patchData);
+    await row.save();
+
+    return res.json({ ok: true, key: row.key, data: row.data, updatedAt: row.updatedAt });
   } catch (err) {
     return res.status(500).json({ error: 'server_error', details: err.message });
   }

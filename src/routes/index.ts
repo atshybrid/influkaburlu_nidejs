@@ -41,8 +41,11 @@ router.get('/public/testimonials', landingCtrl.getTestimonials);
 
 // Admin: landing content CRUD
 router.get('/admin/landing', requireAuth(['admin']), landingCtrl.adminList);
+router.post('/admin/landing', requireAuth(['admin']), landingCtrl.adminCreate);
 router.get('/admin/landing/:key', requireAuth(['admin']), landingCtrl.adminGet);
+router.post('/admin/landing/:key', requireAuth(['admin']), landingCtrl.adminCreateByKey);
 router.put('/admin/landing/:key', requireAuth(['admin']), landingCtrl.adminUpsert);
+router.patch('/admin/landing/:key', requireAuth(['admin']), landingCtrl.adminPatch);
 router.delete('/admin/landing/:key', requireAuth(['admin']), landingCtrl.adminDelete);
 
 // Bunny admin/public
