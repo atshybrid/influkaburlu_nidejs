@@ -1754,7 +1754,9 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer"
+              "type": "string",
+              "description": "Influencer id (ULID preferred; numeric DB id also supported)",
+              "example": "01J9Z3M3KQ1F2J9X0Q2P7V8W9A"
             }
           }
         ],
@@ -1768,12 +1770,24 @@
                   "badges": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "enum": [
+                        "Ready",
+                        "Fit",
+                        "Pro",
+                        "Prime",
+                        "Elite"
+                      ]
                     }
                   }
                 },
                 "required": [
                   "badges"
+                ]
+              }
+              "example": {
+                "badges": [
+                  "Ready"
                 ]
               }
             }

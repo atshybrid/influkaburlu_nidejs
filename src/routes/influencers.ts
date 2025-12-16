@@ -28,7 +28,7 @@ router.put('/me/payment-methods', auth(['influencer']), require('../controllers/
 router.delete('/me/payment-methods/:id', auth(['influencer']), require('../controllers/paymentController').removeMe);
 router.put('/me/payment-methods/:id/preferred', auth(['influencer']), require('../controllers/paymentController').setPreferredMe);
 // Admin badge assignment
-router.put('/:id/badges', auth(['admin']), ctrl.assignBadge);
+router.put('/:id/badges', auth(['admin', 'superadmin']), ctrl.assignBadge);
 // Influencer ad posts
 router.post('/:id/ads', auth(['influencer','admin']), require('../controllers/influencerPostsController').createInfluencerAdPost);
 router.get('/:id/feed', require('../controllers/influencerPostsController').influencerFeed);

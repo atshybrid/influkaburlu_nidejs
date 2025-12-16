@@ -4,6 +4,17 @@ const { uploadBuffer } = require('../utils/r2');
 const fs = require('fs');
 const crypto = require('crypto');
 
+const ALLOWED_BADGES = ['Ready', 'Fit', 'Pro', 'Prime', 'Elite'];
+
+function normalizeBadge(input: any) {
+  if (typeof input !== 'string') return null;
+  const trimmed = input.trim();
+  if (!trimmed) return null;
+  const lower = trimmed.toLowerCase();
+  const match = ALLOWED_BADGES.find(b => b.toLowerCase() === lower);
+  return match || null;
+}
+
 function pickBadgeName(infl) {
   const badges = Array.isArray(infl?.badges) ? infl.badges : [];
   const first = badges.find(b => typeof b === 'string' && b.trim()) || null;
@@ -265,10 +276,41 @@ exports.update = async (req, res) => {
 exports.assignBadge = async (req, res) => {
   const { id } = req.params;
   const { verificationStatus, badges } = req.body;
-  const infl = await Influencer.findByPk(id);
+
+  const infl = /^\d+$/.test(String(id))
+    ? await Influencer.findByPk(id)
+    : await Influencer.findOne({ where: { ulid: String(id) } });
+
   if (!infl) return res.status(404).json({ error: 'not found' });
   if (verificationStatus) infl.verificationStatus = verificationStatus;
-  if (Array.isArray(badges)) infl.badges = badges;
+
+  if (Array.isArray(badges)) {
+    const normalized = badges
+      .map(normalizeBadge)
+      .filter(Boolean);
+
+    // If client provided non-empty array but none valid => invalid
+    if (badges.length > 0 && normalized.length === 0) {
+      return res.status(400).json({
+        error: 'invalid_badge',
+        message: 'Badges must be one of the allowed values',
+        allowed: ALLOWED_BADGES,
+      });
+    }
+
+    // If any invalid values exist, reject (helps clients catch typos)
+    const invalid = badges.filter(b => normalizeBadge(b) === null);
+    if (invalid.length > 0) {
+      return res.status(400).json({
+        error: 'invalid_badge',
+        message: 'Badges must be one of the allowed values',
+        invalid,
+        allowed: ALLOWED_BADGES,
+      });
+    }
+
+    infl.badges = Array.from(new Set(normalized));
+  }
   await infl.save();
   res.json({ ...infl.toJSON(), idUlid: infl.ulid });
 };
