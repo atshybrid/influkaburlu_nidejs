@@ -1761,7 +1761,7 @@
           "Influencers"
         ],
         "summary": "Get my referral code and stats",
-        "description": "Returns (and auto-generates if missing) the influencer referral code, who referred me (if any), and referral commission totals.",
+        "description": "Returns (and auto-generates if missing) the influencer referral code, who referred me (if any), and referral commission totals. Referral earnings are recorded when the referred influencer receives a completed payout.",
         "security": [
           {
             "bearerAuth": []
@@ -1774,6 +1774,23 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/InfluencerReferralMeResponse"
+                },
+                "examples": {
+                  "example": {
+                    "summary": "Example referral profile",
+                    "value": {
+                      "referralCode": "AB12CD34",
+                      "referredBy": null,
+                      "referralLinkedAt": null,
+                      "stats": {
+                        "totalReferred": 3,
+                        "totalEarned": 250,
+                        "totalPaid": 0
+                      },
+                      "completedAdsCount": 12,
+                      "badges": ["Pro"]
+                    }
+                  }
                 }
               }
             }
@@ -1800,6 +1817,12 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/InfluencerReferralApplyRequest"
+              },
+              "examples": {
+                "example": {
+                  "summary": "Apply a code",
+                  "value": { "code": "AB12CD34" }
+                }
               }
             }
           }
@@ -1811,6 +1834,20 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/InfluencerReferralApplyResponse"
+                },
+                "examples": {
+                  "example": {
+                    "summary": "Applied successfully",
+                    "value": {
+                      "ok": true,
+                      "referredBy": {
+                        "influencerIdUlid": "01JABCD1234EFGH5678IJKL901",
+                        "handle": "creator_a",
+                        "name": "Influencer A"
+                      },
+                      "referralLinkedAt": "2025-12-18T10:00:00.000Z"
+                    }
+                  }
                 }
               }
             }
@@ -1827,7 +1864,7 @@
           "Influencers"
         ],
         "summary": "Get my referral commission ledger",
-        "description": "Returns a paginated list of referral commission entries earned by the current influencer.",
+        "description": "Returns a paginated list of referral commission entries earned by the current influencer. Example math: if referred influencer B earns ₹2000 and PLATFORM_COMMISSION_RATE=0.20 then platform commission is ₹400; if REFERRAL_COMMISSION_RATE=0.25 then referrer earns ₹100.",
         "security": [
           {
             "bearerAuth": []
@@ -1854,6 +1891,30 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/InfluencerReferralLedgerResponse"
+                },
+                "examples": {
+                  "example": {
+                    "summary": "Ledger with one entry",
+                    "value": {
+                      "total": 1,
+                      "limit": 20,
+                      "offset": 0,
+                      "items": [
+                        {
+                          "id": 101,
+                          "amount": 100,
+                          "status": "earned",
+                          "payoutId": 555,
+                          "createdAt": "2025-12-18T10:05:00.000Z",
+                          "sourceInfluencer": {
+                            "influencerIdUlid": "01JZZZZ1234EFGH5678IJKL901",
+                            "handle": "creator_b",
+                            "name": "Influencer B"
+                          }
+                        }
+                      ]
+                    }
+                  }
                 }
               }
             }
