@@ -302,6 +302,151 @@
         }
       }
     },
+    "/api/superadmin/referral-commissions": {
+      "get": {
+        "tags": [
+          "Superadmin"
+        ],
+        "summary": "Superadmin: list referral commissions",
+        "description": "Lists referral commission ledger rows for operational payout/settlement.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuperadminReferralCommissionListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/superadmin/referral-commissions/{id}/paid": {
+      "put": {
+        "tags": [
+          "Superadmin"
+        ],
+        "summary": "Superadmin: mark referral commission paid",
+        "description": "Marks a referral commission row as paid (idempotent).",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuperadminReferralCommissionMarkPaidResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/public/influencers": {
       "get": {
         "tags": [
@@ -4884,6 +5029,67 @@
           "time",
           "counts"
         ]
+      },
+      "SuperadminReferralCommissionListResponse": {
+        "type": "object",
+        "properties": {
+          "total": { "type": "integer" },
+          "limit": { "type": "integer" },
+          "offset": { "type": "integer" },
+          "items": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/SuperadminReferralCommissionItem" }
+          }
+        }
+      },
+      "SuperadminReferralCommissionItem": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "amount": { "type": "number" },
+          "status": { "type": "string" },
+          "payoutId": { "type": "integer", "nullable": true },
+          "createdAt": { "type": "string" },
+          "updatedAt": { "type": "string" },
+          "referrerInfluencer": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "influencerIdUlid": { "type": "string" },
+              "handle": { "type": "string", "nullable": true },
+              "name": { "type": "string", "nullable": true }
+            }
+          },
+          "sourceInfluencer": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "influencerIdUlid": { "type": "string" },
+              "handle": { "type": "string", "nullable": true },
+              "name": { "type": "string", "nullable": true }
+            }
+          }
+        }
+      },
+      "SuperadminReferralCommissionMarkPaidResponse": {
+        "type": "object",
+        "properties": {
+          "ok": { "type": "boolean" },
+          "commission": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "integer" },
+              "amount": { "type": "number" },
+              "status": { "type": "string" },
+              "payoutId": { "type": "integer", "nullable": true },
+              "referrerInfluencerId": { "type": "integer" },
+              "sourceInfluencerId": { "type": "integer" },
+              "meta": { "type": "object" },
+              "createdAt": { "type": "string" },
+              "updatedAt": { "type": "string" }
+            }
+          }
+        }
       },
       "ErrorResponse": {
         "type": "object",

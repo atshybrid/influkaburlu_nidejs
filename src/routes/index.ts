@@ -67,6 +67,10 @@ router.put('/admin/payments/:id/status', requireAuth(['admin', 'superadmin']), p
 // Superadmin dashboard
 router.get('/superadmin/dashboard', requireAuth(['superadmin']), superadminCtrl.dashboard);
 
+// Superadmin: referral commission admin
+router.get('/superadmin/referral-commissions', requireAuth(['superadmin']), superadminCtrl.listReferralCommissions);
+router.put('/superadmin/referral-commissions/:id/paid', requireAuth(['superadmin']), superadminCtrl.markReferralCommissionPaid);
+
 // Admin: SEO management
 router.put('/admin/seo/influencer/:id', requireAuth(['admin', 'superadmin']), seoCtrl.adminUpsertInfluencerSeo);
 router.put('/admin/seo/page/:slug', requireAuth(['admin', 'superadmin']), seoCtrl.adminUpsertPageSeo);
