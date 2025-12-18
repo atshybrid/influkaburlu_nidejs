@@ -99,6 +99,44 @@
         }
       }
     },
+    "/api/seo/influencer/{slug}/bundle": {
+      "get": {
+        "tags": [
+          "SEO"
+        ],
+        "summary": "Public influencer SEO bundle (meta + JSON-LD + media)",
+        "description": "Returns SEO meta fields plus schema.org JSON-LD (ProfilePage/Person/BreadcrumbList/VideoObject list) and recent public videos. Intended for Next.js SSR so Google can crawl an HTML profile page with rich structured data.",
+        "security": [],
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InfluencerSeoBundleResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/seo/page/{slug}": {
       "get": {
         "tags": [
@@ -6148,6 +6186,80 @@
           },
           "name": {
             "type": "string"
+          }
+        }
+      },
+      "InfluencerSeoBundleResponse": {
+        "type": "object",
+        "properties": {
+          "meta": {
+            "type": "object",
+            "properties": {
+              "title": { "type": "string" },
+              "description": { "type": "string" },
+              "keywords": { "type": "string" },
+              "canonical": { "type": ["string", "null"] },
+              "robots": { "type": "string" },
+              "og": {
+                "type": "object",
+                "properties": {
+                  "title": { "type": "string" },
+                  "description": { "type": "string" },
+                  "url": { "type": ["string", "null"] },
+                  "type": { "type": "string" },
+                  "image": { "type": ["string", "null"] }
+                }
+              },
+              "twitter": {
+                "type": "object",
+                "properties": {
+                  "card": { "type": "string" },
+                  "title": { "type": "string" },
+                  "description": { "type": "string" },
+                  "image": { "type": ["string", "null"] }
+                }
+              }
+            }
+          },
+          "profile": {
+            "type": "object",
+            "properties": {
+              "slug": { "type": "string" },
+              "name": { "type": "string" },
+              "handle": { "type": ["string", "null"] },
+              "bio": { "type": ["string", "null"] },
+              "profilePicUrl": { "type": ["string", "null"] },
+              "verificationStatus": { "type": "string" },
+              "badges": { "type": "array", "items": { "type": "string" } },
+              "socialLinks": { "type": "object" }
+            }
+          },
+          "media": {
+            "type": "object",
+            "properties": {
+              "videos": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "guid": { "type": "string" },
+                    "playbackUrl": { "type": "string" },
+                    "thumbnailUrl": { "type": ["string", "null"] },
+                    "status": { "type": ["string", "null"] },
+                    "createdAt": { "type": ["string", "null"], "format": "date-time" },
+                    "durationSec": { "type": ["integer", "null"] },
+                    "title": { "type": ["string", "null"] },
+                    "description": { "type": ["string", "null"] }
+                  }
+                }
+              },
+              "images": { "type": "array", "items": { "type": "string" } }
+            }
+          },
+          "schema": {
+            "type": "array",
+            "items": { "type": "object" },
+            "description": "Array of schema.org JSON-LD objects to embed into the HTML profile page."
           }
         }
       },
