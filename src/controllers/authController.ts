@@ -170,6 +170,70 @@ async function verifyGoogleIdToken(idToken: string) {
   return { sub, email, emailVerified, name, picture };
 }
 
+function signGoogleLinkToken(payload: { sub: string; email: string; name?: string | null; picture?: string | null }) {
+  const secret = process.env.JWT_SECRET || 'secret';
+  return jwt.sign(
+    {
+      t: 'google_link',
+      sub: payload.sub,
+      email: payload.email,
+      name: payload.name || null,
+      picture: payload.picture || null
+    },
+    secret,
+    { expiresIn: '10m' }
+  );
+}
+
+function verifyGoogleLinkToken(token: string) {
+  const secret = process.env.JWT_SECRET || 'secret';
+  const decoded: any = jwt.verify(token, secret);
+  if (!decoded || (decoded.t !== 'google_link' && decoded.t !== 'google_signup') || !decoded.sub || !decoded.email) {
+    const err: any = new Error('invalid_link_token');
+    err.code = 'invalid_link_token';
+    throw err;
+  }
+  return decoded;
+}
+
+async function createOtpForPhone(phone: string, userId?: number | null) {
+  const otp = String(Math.floor(100000 + Math.random() * 900000));
+  const requestId = 'req_' + crypto.randomBytes(8).toString('hex');
+  const ttlMinutes = parseInt(process.env.OTP_TTL_MINUTES || '10', 10);
+  const expiresAt = new Date(Date.now() + ttlMinutes * 60 * 1000);
+  await OtpRequest.create({
+    userId: userId ?? null,
+    phone,
+    otp,
+    requestId,
+    expiresAt,
+    used: false
+  });
+  otpStore.set(phone, { otp, expiresAt: expiresAt.getTime(), requestId });
+  return { otp, requestId, expiresAt };
+}
+
+async function verifyOtpForPhone(params: { phone: string; otp: string; requestId?: string | null }) {
+  const { phone, otp, requestId } = params;
+  const where: any = { phone, otp, used: false };
+  if (requestId) where.requestId = requestId;
+  const record = await OtpRequest.findOne({ where, order: [['createdAt', 'DESC']] });
+  if (!record) {
+    const err: any = new Error('invalid_otp');
+    err.code = 'invalid_otp';
+    throw err;
+  }
+  if (new Date() > record.expiresAt) {
+    const err: any = new Error('otp_expired');
+    err.code = 'otp_expired';
+    throw err;
+  }
+  record.used = true;
+  await record.save();
+  otpStore.delete(phone);
+  return record;
+}
+
 function signGoogleSignupToken(payload: { sub: string; email: string; name?: string | null; picture?: string | null }) {
   const secret = process.env.JWT_SECRET || 'secret';
   return jwt.sign(
@@ -287,6 +351,116 @@ exports.googleAuth = async (req, res) => {
     }
     const msg = err?.message || 'Google auth failed';
     return res.status(401).json({ error: 'google_auth_failed', details: msg });
+  }
+};
+
+// New: Step 1 for the "Google + Mobile" flow.
+// - If googleSub is already linked -> returns session
+// - Else returns linkRequired=true + linkToken so the client can verify phone OTP and call /api/auth/google/link
+exports.googleStart = async (req, res) => {
+  try {
+    const { idToken } = req.body || {};
+    if (!idToken) return res.status(400).json({ error: 'idToken is required' });
+    const { sub, email, name, picture } = await verifyGoogleIdToken(idToken);
+
+    const user = await User.findOne({ where: { googleSub: sub } });
+    if (user) {
+      const session = await issueSession(user);
+      return res.json({ linkRequired: false, session });
+    }
+
+    const linkToken = signGoogleLinkToken({ sub, email, name: name || null, picture: picture || null });
+    return res.json({
+      linkRequired: true,
+      linkToken,
+      profile: { email, name: name || null, picture: picture || null }
+    });
+  } catch (err) {
+    if (err?.code === 'google_auth_not_configured') {
+      return res.status(500).json({ error: 'google_auth_not_configured', details: 'Set GOOGLE_CLIENT_IDS (comma-separated) or GOOGLE_CLIENT_ID' });
+    }
+    const msg = err?.message || 'Google start failed';
+    return res.status(401).json({ error: 'google_auth_failed', details: msg });
+  }
+};
+
+// New: Step 2 for the "Google + Mobile" flow.
+// Requires OTP verification for the phone before linking/creating.
+exports.googleLink = async (req, res) => {
+  try {
+    const { linkToken, phone, role, requestId } = req.body || {};
+    const otp = req.body?.otp ?? req.body?.code;
+    if (!linkToken) return res.status(400).json({ error: 'linkToken is required' });
+    if (!phone) return res.status(400).json({ error: 'phone is required' });
+
+    const requireOtp = (process.env.GOOGLE_LINK_REQUIRE_OTP || 'true').toLowerCase() !== 'false';
+    if (requireOtp && !otp) return res.status(400).json({ error: 'otp/code is required' });
+
+    const decoded = verifyGoogleLinkToken(String(linkToken));
+    const sub = decoded.sub;
+    const email = decoded.email;
+    const name = decoded.name || null;
+    const picture = decoded.picture || null;
+
+    // If this Google is already linked, just login.
+    const byGoogle = await User.findOne({ where: { googleSub: sub } });
+    if (byGoogle) {
+      const session = await issueSession(byGoogle);
+      return res.json(session);
+    }
+
+    if (requireOtp) {
+      await verifyOtpForPhone({ phone: String(phone), otp: String(otp), requestId: requestId ? String(requestId) : null });
+    }
+
+    // Link to existing user by phone, else create new.
+    let user = await User.findOne({ where: { phone: String(phone) } });
+    if (user) {
+      const updates: any = {};
+      if (!user.googleSub) updates.googleSub = sub;
+      if (!user.authProvider) updates.authProvider = 'google';
+      if (!user.googlePictureUrl && picture) updates.googlePictureUrl = picture;
+      if (!user.email && email) {
+        const emailOwner = await User.findOne({ where: { email } });
+        if (!emailOwner) updates.email = email;
+      }
+      if (!user.name && name) updates.name = name;
+      if (Object.keys(updates).length > 0) await user.update(updates);
+      const session = await issueSession(user);
+      return res.json(session);
+    }
+
+    if (!role) return res.status(400).json({ error: 'role is required for first signup' });
+    if (!['influencer', 'brand', 'admin'].includes(String(role))) {
+      return res.status(400).json({ error: 'invalid role' });
+    }
+
+    const randomSecret = crypto.randomBytes(32).toString('hex');
+    const hash = await bcrypt.hash(randomSecret, 10);
+    user = await User.create({
+      name,
+      email,
+      phone: String(phone),
+      passwordHash: hash,
+      role,
+      authProvider: 'google',
+      googleSub: sub,
+      googlePictureUrl: picture,
+      emailVerified: true
+    });
+    if (role === 'influencer') await Influencer.create({ userId: user.id });
+    if (role === 'brand') await Brand.create({ userId: user.id, companyName: name || 'Brand' });
+
+    const session = await issueSession(user);
+    return res.json(session);
+  } catch (err) {
+    if (err?.code === 'invalid_link_token' || /jwt/i.test(String(err?.message || ''))) {
+      return res.status(400).json({ error: 'invalid_link_token' });
+    }
+    if (err?.code === 'invalid_otp') return res.status(400).json({ error: 'invalid_otp' });
+    if (err?.code === 'otp_expired') return res.status(400).json({ error: 'otp_expired' });
+    const msg = err?.message || 'Google link failed';
+    return res.status(400).json({ error: 'google_link_failed', details: msg });
   }
 };
 
@@ -472,6 +646,38 @@ exports.requestMpinReset = async (req, res) => {
     // TODO: integrate SMS provider here to send OTP
     res.json({ requestId });
   } catch (err) { res.status(500).json({ error: err.message }); }
+};
+
+// Generic OTP request for phone verification (signup/linking)
+exports.requestOtp = async (req, res) => {
+  try {
+    const { phone } = req.body || {};
+    if (!phone) return res.status(400).json({ error: 'phone is required' });
+    const user = await User.findOne({ where: { phone: String(phone) } });
+    const { otp, requestId } = await createOtpForPhone(String(phone), user?.id ?? null);
+    const payload: any = { requestId };
+    // Do not leak OTP in production.
+    if ((process.env.NODE_ENV || 'development') !== 'production') payload.otp = otp;
+    // TODO: integrate SMS provider here to send OTP
+    return res.json(payload);
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+};
+
+// Generic OTP verify (optional helper endpoint)
+exports.verifyOtp = async (req, res) => {
+  try {
+    const { phone, requestId } = req.body || {};
+    const otp = req.body?.otp ?? req.body?.code;
+    if (!phone || !otp) return res.status(400).json({ error: 'phone and otp/code are required' });
+    await verifyOtpForPhone({ phone: String(phone), otp: String(otp), requestId: requestId ? String(requestId) : null });
+    return res.json({ success: true });
+  } catch (err) {
+    if (err?.code === 'invalid_otp') return res.status(400).json({ error: 'invalid_otp' });
+    if (err?.code === 'otp_expired') return res.status(400).json({ error: 'otp_expired' });
+    return res.status(500).json({ error: err.message });
+  }
 };
 
 exports.verifyMpinReset = async (req, res) => {

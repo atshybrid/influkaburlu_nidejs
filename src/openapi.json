@@ -680,6 +680,96 @@
         }
       }
     },
+    "/api/auth/otp/request": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Request OTP (phone verification)",
+        "description": "Creates a short-lived OTP for the given phone. In production, OTP is sent via SMS provider (server-side integration required).",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthOtpRequest"
+              },
+              "example": {
+                "phone": "8888888888"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthOtpResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/otp/verify": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Verify OTP (phone verification)",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthOtpVerifyRequest"
+              },
+              "example": {
+                "phone": "8888888888",
+                "otp": "123456",
+                "requestId": "req_4c2a8c8a2f3b1d0e"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/auth/google": {
       "post": {
         "tags": [
@@ -715,6 +805,126 @@
                     "idToken": "<google-id-token>",
                     "role": "brand",
                     "phone": "8282868389"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/google/start": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Google Sign-In start (returns linkToken if phone verification needed)",
+        "description": "Verifies Google ID token. If googleSub already linked, returns session. Otherwise returns linkRequired=true plus a short-lived linkToken to be used with /api/auth/google/link after verifying phone OTP.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthGoogleStartRequest"
+              },
+              "example": {
+                "idToken": "<google-id-token>"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthGoogleStartResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/google/link": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Google Sign-In link (link to existing phone or create new)",
+        "description": "Verifies phone OTP (default behavior), then if the phone already exists it links googleSub to that user; otherwise creates a new user (requires role). Set GOOGLE_LINK_REQUIRE_OTP=false to temporarily disable OTP enforcement for linking (not recommended for production).",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthGoogleLinkRequest"
+              },
+              "examples": {
+                "linkExistingPhone": {
+                  "summary": "Existing mobile account (link Google)",
+                  "value": {
+                    "linkToken": "<link-token>",
+                    "phone": "8888888888",
+                    "otp": "123456",
+                    "requestId": "req_4c2a8c8a2f3b1d0e"
+                  }
+                },
+                "createNewUser": {
+                  "summary": "New user (create + link)",
+                  "value": {
+                    "linkToken": "<link-token>",
+                    "phone": "8888888888",
+                    "otp": "123456",
+                    "requestId": "req_4c2a8c8a2f3b1d0e",
+                    "role": "influencer"
                   }
                 }
               }
@@ -4951,6 +5161,107 @@
             "type": "string"
           }
         }
+      },
+      "AuthOtpRequest": {
+        "type": "object",
+        "required": ["phone"],
+        "properties": {
+          "phone": { "type": "string" }
+        }
+      },
+      "AuthOtpResponse": {
+        "type": "object",
+        "required": ["requestId"],
+        "properties": {
+          "requestId": { "type": "string" },
+          "otp": { "type": "string", "description": "Returned only in non-production for debugging/testing." }
+        }
+      },
+      "AuthOtpVerifyRequest": {
+        "description": "Accepts either `otp` or legacy `code` for the 6-digit verification value.",
+        "oneOf": [
+          {
+            "type": "object",
+            "required": ["phone", "otp"],
+            "properties": {
+              "phone": { "type": "string" },
+              "otp": { "type": "string" },
+              "requestId": { "type": "string" }
+            }
+          },
+          {
+            "type": "object",
+            "required": ["phone", "code"],
+            "properties": {
+              "phone": { "type": "string" },
+              "code": { "type": "string" },
+              "requestId": { "type": "string" }
+            }
+          }
+        ]
+      },
+      "AuthGoogleStartRequest": {
+        "type": "object",
+        "required": ["idToken"],
+        "properties": {
+          "idToken": { "type": "string", "description": "Google ID token obtained from Google Sign-In SDK." }
+        }
+      },
+      "AuthGoogleStartResponse": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": ["linkRequired", "session"],
+            "properties": {
+              "linkRequired": { "type": "boolean", "enum": [false] },
+              "session": { "$ref": "#/components/schemas/AuthResponse" }
+            }
+          },
+          {
+            "type": "object",
+            "required": ["linkRequired", "linkToken", "profile"],
+            "properties": {
+              "linkRequired": { "type": "boolean", "enum": [true] },
+              "linkToken": { "type": "string", "description": "Short-lived token to be used with /api/auth/google/link" },
+              "profile": {
+                "type": "object",
+                "required": ["email"],
+                "properties": {
+                  "email": { "type": "string" },
+                  "name": { "type": ["string", "null"] },
+                  "picture": { "type": ["string", "null"] }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "AuthGoogleLinkRequest": {
+        "description": "Accepts either `otp` or legacy `code` for the 6-digit verification value.",
+        "oneOf": [
+          {
+            "type": "object",
+            "required": ["linkToken", "phone", "otp"],
+            "properties": {
+              "linkToken": { "type": "string" },
+              "phone": { "type": "string" },
+              "otp": { "type": "string" },
+              "requestId": { "type": "string" },
+              "role": { "type": "string", "enum": ["influencer", "brand", "admin"], "description": "Required only when creating a new user." }
+            }
+          },
+          {
+            "type": "object",
+            "required": ["linkToken", "phone", "code"],
+            "properties": {
+              "linkToken": { "type": "string" },
+              "phone": { "type": "string" },
+              "code": { "type": "string" },
+              "requestId": { "type": "string" },
+              "role": { "type": "string", "enum": ["influencer", "brand", "admin"], "description": "Required only when creating a new user." }
+            }
+          }
+        ]
       },
       "AuthRefreshRequest": {
         "type": "object",
