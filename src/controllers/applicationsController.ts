@@ -38,9 +38,22 @@ async function maybeCreateReferralCommission({ sourceInfluencerId, payout }) {
     const referrerId = source?.referredByInfluencerId;
     if (!referrerId) return null;
 
-    const rate = Math.max(Math.min(parseFloat(process.env.REFERRAL_COMMISSION_RATE || '0.25') || 0, 1), 0);
+    // Best practice: keep referral reward independent from platform fee.
+    // - Default behavior (backward compatible): share of platform commission.
+    // - Optional: pay referral from gross (useful when PLATFORM_COMMISSION_RATE=0).
+    const grossRate = Math.max(Math.min(parseFloat(process.env.REFERRAL_GROSS_RATE || '0') || 0, 1), 0);
+    const commissionShareRate = Math.max(
+      Math.min(parseFloat(process.env.REFERRAL_COMMISSION_RATE || '0.25') || 0, 1),
+      0
+    );
+
+    const grossAmount = parseFloat(payout?.grossAmount || 0);
     const platformCommission = parseFloat(payout?.commission || 0);
-    const amount = +(platformCommission * rate).toFixed(2);
+
+    const amount = +(grossRate > 0
+      ? (grossAmount * grossRate)
+      : (platformCommission * commissionShareRate)
+    ).toFixed(2);
     if (!amount || amount <= 0) return null;
 
     // Avoid duplicates if endpoint retried
@@ -53,7 +66,9 @@ async function maybeCreateReferralCommission({ sourceInfluencerId, payout }) {
       payoutId: payout.id,
       amount,
       status: 'earned',
-      meta: { rate, base: 'platform_commission' },
+      meta: grossRate > 0
+        ? { rate: grossRate, base: 'gross' }
+        : { rate: commissionShareRate, base: 'platform_commission' },
     });
     return row;
   } catch (_) {
