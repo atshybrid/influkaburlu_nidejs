@@ -1,4 +1,4 @@
-const { Influencer, InfluencerPricing, User, Country, State, District, InfluencerPaymentMethod, InfluencerAdMedia, Application, Ad, Brand, Payout } = require('../models');
+const { Influencer, InfluencerPricing, User, Country, State, District, InfluencerPaymentMethod, InfluencerAdMedia, Application, Ad, Brand, Payout, ReferralCommission } = require('../models');
 const { Op } = require('sequelize');
 const { uploadBuffer } = require('../utils/r2');
 const fs = require('fs');
@@ -6,6 +6,152 @@ const crypto = require('crypto');
 const { slugify } = require('../utils/slugify');
 
 const ALLOWED_BADGES = ['Ready', 'Fit', 'Pro', 'Prime', 'Elite'];
+
+function makeReferralCode() {
+  const buf = crypto.randomBytes(4); // 8 hex chars
+  return buf.toString('hex').toUpperCase();
+}
+
+async function ensureReferralCode(infl) {
+  if (infl.referralCode) return infl.referralCode;
+  for (let i = 0; i < 10; i++) {
+    const code = makeReferralCode();
+    const exists = await Influencer.findOne({ where: { referralCode: code } });
+    if (!exists) {
+      infl.referralCode = code;
+      await infl.save();
+      return code;
+    }
+  }
+  // Fallback (extremely unlikely)
+  const code = (makeReferralCode() + makeReferralCode()).slice(0, 12);
+  infl.referralCode = code;
+  await infl.save();
+  return code;
+}
+
+exports.getMyReferral = async (req, res) => {
+  try {
+    const infl = await Influencer.findOne({ where: { userId: req.user.id } });
+    if (!infl) return res.status(404).json({ error: 'not found' });
+
+    const code = await ensureReferralCode(infl);
+
+    const totalReferred = await Influencer.count({ where: { referredByInfluencerId: infl.id } });
+    const totalEarnedRaw = await ReferralCommission.sum('amount', { where: { referrerInfluencerId: infl.id, status: 'earned' } });
+    const totalEarned = Number(totalEarnedRaw || 0);
+    const totalPaidRaw = await ReferralCommission.sum('amount', { where: { referrerInfluencerId: infl.id, status: 'paid' } });
+    const totalPaid = Number(totalPaidRaw || 0);
+
+    let referredBy = null;
+    if (infl.referredByInfluencerId) {
+      const ref = await Influencer.findByPk(infl.referredByInfluencerId, { include: [{ model: User, attributes: ['name'] }] });
+      if (ref) {
+        referredBy = {
+          influencerIdUlid: ref.ulid,
+          handle: ref.handle || null,
+          name: ref.User?.name || null,
+        };
+      }
+    }
+
+    return res.json({
+      referralCode: code,
+      referredBy,
+      referralLinkedAt: infl.referralLinkedAt || null,
+      stats: {
+        totalReferred,
+        totalEarned,
+        totalPaid,
+      },
+      // Useful for showing progress UI on frontend
+      completedAdsCount: typeof infl.completedAdsCount === 'number' ? infl.completedAdsCount : Number(infl.completedAdsCount || 0),
+      badges: Array.isArray(infl.badges) ? infl.badges : [],
+    });
+  } catch (err) {
+    return res.status(500).json({ error: 'server_error', details: err.message });
+  }
+};
+
+exports.applyReferralCode = async (req, res) => {
+  try {
+    const code = String(req.body?.code || '').trim().toUpperCase();
+    if (!code) return res.status(400).json({ error: 'code_required' });
+    if (code.length < 4 || code.length > 32) return res.status(400).json({ error: 'invalid_code' });
+
+    const infl = await Influencer.findOne({ where: { userId: req.user.id } });
+    if (!infl) return res.status(404).json({ error: 'not found' });
+    if (infl.referredByInfluencerId) {
+      return res.status(409).json({ error: 'already_referred' });
+    }
+
+    const ref = await Influencer.findOne({ where: { referralCode: code }, include: [{ model: User, attributes: ['name'] }] });
+    if (!ref) return res.status(404).json({ error: 'referrer_not_found' });
+    if (ref.id === infl.id) return res.status(400).json({ error: 'cannot_refer_self' });
+
+    infl.referredByInfluencerId = ref.id;
+    infl.referralLinkedAt = new Date();
+    await infl.save();
+
+    return res.json({
+      ok: true,
+      referredBy: {
+        influencerIdUlid: ref.ulid,
+        handle: ref.handle || null,
+        name: ref.User?.name || null,
+      },
+      referralLinkedAt: infl.referralLinkedAt,
+    });
+  } catch (err) {
+    return res.status(500).json({ error: 'server_error', details: err.message });
+  }
+};
+
+exports.getMyReferralLedger = async (req, res) => {
+  try {
+    const infl = await Influencer.findOne({ where: { userId: req.user.id } });
+    if (!infl) return res.status(404).json({ error: 'not found' });
+
+    const limit = Math.min(Math.max(parseInt(req.query.limit || '20', 10) || 20, 1), 100);
+    const offset = Math.max(parseInt(req.query.offset || '0', 10) || 0, 0);
+
+    const total = await ReferralCommission.count({ where: { referrerInfluencerId: infl.id } });
+    const rows = await ReferralCommission.findAll({
+      where: { referrerInfluencerId: infl.id },
+      order: [['createdAt', 'DESC']],
+      limit,
+      offset,
+    });
+
+    const sourceIds = Array.from(new Set(rows.map(r => r.sourceInfluencerId).filter(Boolean)));
+    const sources = sourceIds.length
+      ? await Influencer.findAll({ where: { id: sourceIds }, include: [{ model: User, attributes: ['name'] }] })
+      : [];
+    const sourceById = new Map(sources.map(s => [s.id, s]));
+
+    const items = rows.map(r => {
+      const src: any = sourceById.get(r.sourceInfluencerId) || null;
+      return {
+        id: r.id,
+        amount: Number(r.amount || 0),
+        status: r.status,
+        payoutId: r.payoutId || null,
+        createdAt: r.createdAt,
+        sourceInfluencer: src
+          ? {
+              influencerIdUlid: src.ulid,
+              handle: src.handle || null,
+              name: src.User?.name || null,
+            }
+          : null,
+      };
+    });
+
+    return res.json({ total, limit, offset, items });
+  } catch (err) {
+    return res.status(500).json({ error: 'server_error', details: err.message });
+  }
+};
 
 function normalizeBadge(input: any) {
   if (typeof input !== 'string') return null;

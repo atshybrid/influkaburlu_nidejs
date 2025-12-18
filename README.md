@@ -57,3 +57,40 @@ Note: Keep Sequelize as the primary ORM until we migrate endpoints.
 
 - If secrets are exposed or shared, rotate them immediately in the provider dashboards (Razorpay/OpenAI/Cloudflare), then update your local `.env`.
 - Prefer environment injection in production (CI/host secrets, container env vars) over bundling `.env` files.
+
+## DB Migrations: No-Data-Loss Rules
+
+When adding new features, **never lose existing production data**. Follow these rules every time you change the database.
+
+### Safe changes (additive)
+
+These are generally safe and do not delete existing rows:
+
+- `ADD COLUMN` (prefer nullable first)
+- `CREATE TABLE`
+- `CREATE INDEX`
+- `ADD CONSTRAINT` (only if it will not fail on existing rows)
+
+### Risky changes (can cause data loss)
+
+Avoid these unless you intentionally planned a data migration + backup:
+
+- `DROP TABLE`, `DROP COLUMN`
+- `TRUNCATE`
+- destructive sync like `sequelize.sync({ force: true })`
+- making a column `NOT NULL` without backfilling existing rows
+- adding a `UNIQUE` constraint where existing data may violate it
+
+### Best-practice pattern for new fields
+
+1. Add the column **nullable** (or with a safe default)
+2. Backfill data (optional)
+3. Only then add `NOT NULL` / `UNIQUE` constraints (optional)
+
+### Quick checklist before deploy
+
+- Confirm migration is **additive** (no `dropTable/removeColumn/truncate/force`)
+- If adding `UNIQUE` / FK constraints, confirm existing rows will pass
+- Ensure migrations are tested on a copy/staging DB first
+
+Note: `down()` migrations may drop newly-added schema. In production, we typically **do not run down()** unless we intentionally roll back.

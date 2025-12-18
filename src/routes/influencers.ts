@@ -14,6 +14,10 @@ const upload = multer({ storage, limits: { fileSize: (parseInt(process.env.MEDIA
 router.get('/me', auth(), ctrl.me);
 router.put('/me', auth(['influencer']), ctrl.update);
 router.get('/dashboard', auth(['influencer']), ctrl.dashboard);
+// Referrals
+router.get('/me/referral', auth(['influencer']), ctrl.getMyReferral);
+router.post('/me/referral/apply', auth(['influencer']), ctrl.applyReferralCode);
+router.get('/me/referral/ledger', auth(['influencer']), ctrl.getMyReferralLedger);
 // Update profile picture (multipart or JSON imageUrl)
 router.put('/me/profile-pic', auth(['influencer']), fileUpload, ctrl.updateProfilePic);
 // Pricing (get/update)

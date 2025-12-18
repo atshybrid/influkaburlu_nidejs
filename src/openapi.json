@@ -1755,6 +1755,113 @@
         }
       }
     },
+    "/api/influencers/me/referral": {
+      "get": {
+        "tags": [
+          "Influencers"
+        ],
+        "summary": "Get my referral code and stats",
+        "description": "Returns (and auto-generates if missing) the influencer referral code, who referred me (if any), and referral commission totals.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InfluencerReferralMeResponse"
+                }
+              }
+            }
+          },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/api/influencers/me/referral/apply": {
+      "post": {
+        "tags": [
+          "Influencers"
+        ],
+        "summary": "Apply a referral code",
+        "description": "Links the current influencer to a referrer one time. Cannot be changed once set.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InfluencerReferralApplyRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InfluencerReferralApplyResponse"
+                }
+              }
+            }
+          },
+          "400": { "description": "Bad request", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "409": { "description": "Conflict", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+        }
+      }
+    },
+    "/api/influencers/me/referral/ledger": {
+      "get": {
+        "tags": [
+          "Influencers"
+        ],
+        "summary": "Get my referral commission ledger",
+        "description": "Returns a paginated list of referral commission entries earned by the current influencer.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "default": 20, "minimum": 1, "maximum": 100 }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "default": 0, "minimum": 0 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InfluencerReferralLedgerResponse"
+                }
+              }
+            }
+          },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
     "/api/influencers/me/profile-pic": {
       "put": {
         "tags": [
@@ -5750,6 +5857,87 @@
             "type": "string"
           }
         }
+      },
+      "InfluencerReferralMeResponse": {
+        "type": "object",
+        "properties": {
+          "referralCode": { "type": "string" },
+          "referredBy": {
+            "type": ["object", "null"],
+            "properties": {
+              "influencerIdUlid": { "type": "string" },
+              "handle": { "type": ["string", "null"] },
+              "name": { "type": ["string", "null"] }
+            }
+          },
+          "referralLinkedAt": { "type": ["string", "null"], "format": "date-time" },
+          "stats": {
+            "type": "object",
+            "properties": {
+              "totalReferred": { "type": "integer" },
+              "totalEarned": { "type": "number" },
+              "totalPaid": { "type": "number" }
+            }
+          },
+          "completedAdsCount": { "type": "integer" },
+          "badges": { "type": "array", "items": { "type": "string" } }
+        },
+        "required": ["referralCode", "referredBy", "referralLinkedAt", "stats", "completedAdsCount", "badges"]
+      },
+      "InfluencerReferralApplyRequest": {
+        "type": "object",
+        "properties": {
+          "code": { "type": "string" }
+        },
+        "required": ["code"]
+      },
+      "InfluencerReferralApplyResponse": {
+        "type": "object",
+        "properties": {
+          "ok": { "type": "boolean" },
+          "referredBy": {
+            "type": "object",
+            "properties": {
+              "influencerIdUlid": { "type": "string" },
+              "handle": { "type": ["string", "null"] },
+              "name": { "type": ["string", "null"] }
+            },
+            "required": ["influencerIdUlid", "handle", "name"]
+          },
+          "referralLinkedAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["ok", "referredBy", "referralLinkedAt"]
+      },
+      "InfluencerReferralLedgerResponse": {
+        "type": "object",
+        "properties": {
+          "total": { "type": "integer" },
+          "limit": { "type": "integer" },
+          "offset": { "type": "integer" },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "integer" },
+                "amount": { "type": "number" },
+                "status": { "type": "string" },
+                "payoutId": { "type": ["integer", "null"] },
+                "createdAt": { "type": ["string", "null"], "format": "date-time" },
+                "sourceInfluencer": {
+                  "type": ["object", "null"],
+                  "properties": {
+                    "influencerIdUlid": { "type": "string" },
+                    "handle": { "type": ["string", "null"] },
+                    "name": { "type": ["string", "null"] }
+                  }
+                }
+              },
+              "required": ["id", "amount", "status", "payoutId", "createdAt", "sourceInfluencer"]
+            }
+          }
+        },
+        "required": ["total", "limit", "offset", "items"]
       },
       "ProfilePack": {
         "type": "object",

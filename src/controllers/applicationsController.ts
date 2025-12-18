@@ -1,4 +1,65 @@
-const { Application, Ad, Influencer, Payout } = require('../models');
+const { Application, Ad, Influencer, Payout, ReferralCommission } = require('../models');
+
+function computeTierBadgeFromCompletedAdsCount(count) {
+  const n = Math.max(parseInt(count || 0, 10) || 0, 0);
+  if (n >= 50) return 'Elite';
+  if (n >= 25) return 'Prime';
+  if (n >= 10) return 'Pro';
+  if (n >= 5) return 'Fit';
+  return 'Ready';
+}
+
+async function maybeUpdateInfluencerBadgesAndCounts(influencerId) {
+  const infl = await Influencer.findByPk(influencerId);
+  if (!infl) return null;
+
+  const prevCount = typeof infl.completedAdsCount === 'number' ? infl.completedAdsCount : parseInt(infl.completedAdsCount || '0', 10) || 0;
+  const nextCount = prevCount + 1;
+  infl.completedAdsCount = nextCount;
+
+  const tier = computeTierBadgeFromCompletedAdsCount(nextCount);
+  const badges = Array.isArray(infl.badges) ? infl.badges.filter(b => typeof b === 'string') : [];
+  const allowed = new Set(['Ready', 'Fit', 'Pro', 'Prime', 'Elite']);
+  const filtered = badges.filter(b => allowed.has(b));
+  if (!filtered.includes(tier)) {
+    // Keep other allowed badges, but ensure tier is present and first.
+    infl.badges = [tier, ...filtered.filter(b => b !== tier)];
+  } else {
+    infl.badges = [tier, ...filtered.filter(b => b !== tier)];
+  }
+
+  await infl.save();
+  return infl;
+}
+
+async function maybeCreateReferralCommission({ sourceInfluencerId, payout }) {
+  try {
+    const source = await Influencer.findByPk(sourceInfluencerId);
+    const referrerId = source?.referredByInfluencerId;
+    if (!referrerId) return null;
+
+    const rate = Math.max(Math.min(parseFloat(process.env.REFERRAL_COMMISSION_RATE || '0.25') || 0, 1), 0);
+    const platformCommission = parseFloat(payout?.commission || 0);
+    const amount = +(platformCommission * rate).toFixed(2);
+    if (!amount || amount <= 0) return null;
+
+    // Avoid duplicates if endpoint retried
+    const existing = await ReferralCommission.findOne({ where: { referrerInfluencerId: referrerId, payoutId: payout.id } });
+    if (existing) return existing;
+
+    const row = await ReferralCommission.create({
+      referrerInfluencerId: referrerId,
+      sourceInfluencerId,
+      payoutId: payout.id,
+      amount,
+      status: 'earned',
+      meta: { rate, base: 'platform_commission' },
+    });
+    return row;
+  } catch (_) {
+    return null;
+  }
+}
 
 exports.applyToAd = async (req, res) => {
   try {
@@ -30,10 +91,17 @@ exports.approveAndPayout = async (req, res) => {
     app.status = 'paid';
     const ad = await Ad.findByPk(app.adId);
     const pay = parseFloat(ad.payPerInfluencer || 0);
-    const commission = +(pay * 0.20).toFixed(2);
+    const platformRate = Math.max(Math.min(parseFloat(process.env.PLATFORM_COMMISSION_RATE || '0.20') || 0, 1), 0);
+    const commission = +(pay * platformRate).toFixed(2);
     const net = +(pay - commission).toFixed(2);
     await app.save();
     const payout = await Payout.create({ influencerId: app.influencerId, grossAmount: pay, commission, netAmount: net, state: app.state, status: 'completed' });
+    // Gamification: update completed ads count + badge tier (best-effort)
+    try {
+      await maybeUpdateInfluencerBadgesAndCounts(app.influencerId);
+    } catch (_) {}
+    // Referrals: create commission for referrer (best-effort)
+    await maybeCreateReferralCommission({ sourceInfluencerId: app.influencerId, payout });
     res.json({ app: { ...app.toJSON(), adIdUlid: ad.ulid }, payout });
   } catch (err) { res.status(500).json({ error: err.message }); }
 };

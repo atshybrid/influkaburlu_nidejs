@@ -52,6 +52,7 @@ const InfluencerPaymentMethod = require('./influencerPaymentMethod')(sequelize, 
 const ProfilePack = require('./profilePack')(sequelize, Sequelize.DataTypes);
 const LandingContent = require('./landingContent')(sequelize, Sequelize.DataTypes);
 const SeoPage = require('./seoPage')(sequelize, Sequelize.DataTypes);
+const ReferralCommission = require('./referralCommission')(sequelize, Sequelize.DataTypes);
 const { Country, State, District } = require('./location')(sequelize, Sequelize.DataTypes);
 const { Role, UserRole } = require('./role')(sequelize, Sequelize.DataTypes);
 
@@ -136,6 +137,51 @@ async function ensureInfluencerProfilePicColumn() {
 }
 
 ensureInfluencerProfilePicColumn().catch(() => {});
+
+async function ensureInfluencerReferralColumns() {
+	const qi = sequelize.getQueryInterface();
+	try {
+		await sequelize.query('ALTER TABLE "Influencers" ADD COLUMN IF NOT EXISTS "referralCode" VARCHAR(32)');
+		await sequelize.query('ALTER TABLE "Influencers" ADD COLUMN IF NOT EXISTS "referredByInfluencerId" INTEGER');
+		await sequelize.query('ALTER TABLE "Influencers" ADD COLUMN IF NOT EXISTS "referralLinkedAt" TIMESTAMP WITH TIME ZONE');
+		await sequelize.query('ALTER TABLE "Influencers" ADD COLUMN IF NOT EXISTS "completedAdsCount" INTEGER DEFAULT 0');
+		await sequelize.query('CREATE UNIQUE INDEX IF NOT EXISTS "Influencers_referralCode_unique" ON "Influencers"("referralCode") WHERE "referralCode" IS NOT NULL');
+	} catch (e) {
+		try {
+			const table = await qi.describeTable('Influencers');
+			if (!table.referralCode) await qi.addColumn('Influencers', 'referralCode', { type: Sequelize.DataTypes.STRING(32) });
+			if (!table.referredByInfluencerId) await qi.addColumn('Influencers', 'referredByInfluencerId', { type: Sequelize.DataTypes.INTEGER });
+			if (!table.referralLinkedAt) await qi.addColumn('Influencers', 'referralLinkedAt', { type: Sequelize.DataTypes.DATE });
+			if (!table.completedAdsCount) await qi.addColumn('Influencers', 'completedAdsCount', { type: Sequelize.DataTypes.INTEGER, defaultValue: 0 });
+		} catch (_) {}
+	}
+}
+
+ensureInfluencerReferralColumns().catch(() => {});
+
+async function ensureReferralCommissionsTable() {
+	const qi = sequelize.getQueryInterface();
+	try {
+		await qi.describeTable('ReferralCommissions');
+	} catch (e) {
+		await qi.createTable('ReferralCommissions', {
+			id: { type: Sequelize.DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+			referrerInfluencerId: { type: Sequelize.DataTypes.INTEGER, allowNull: false },
+			sourceInfluencerId: { type: Sequelize.DataTypes.INTEGER, allowNull: false },
+			payoutId: { type: Sequelize.DataTypes.INTEGER, allowNull: true },
+			amount: { type: Sequelize.DataTypes.DECIMAL(12, 2), allowNull: false },
+			status: { type: Sequelize.DataTypes.STRING(32), allowNull: false, defaultValue: 'earned' },
+			meta: { type: Sequelize.DataTypes.JSONB, allowNull: false, defaultValue: {} },
+			createdAt: { type: Sequelize.DataTypes.DATE, allowNull: false, defaultValue: Sequelize.fn('NOW') },
+			updatedAt: { type: Sequelize.DataTypes.DATE, allowNull: false, defaultValue: Sequelize.fn('NOW') },
+		});
+		try {
+			await sequelize.query('CREATE UNIQUE INDEX IF NOT EXISTS "ReferralCommissions_referrer_payout_unique" ON "ReferralCommissions"("referrerInfluencerId", "payoutId")');
+		} catch (_) {}
+	}
+}
+
+ensureReferralCommissionsTable().catch(() => {});
 
 async function ensureUserAuthColumns() {
 	const qi = sequelize.getQueryInterface();
@@ -367,7 +413,11 @@ InfluencerPaymentMethod.belongsTo(Influencer, { foreignKey: 'influencerId' });
 Influencer.hasMany(ProfilePack, { foreignKey: 'influencerId' });
 ProfilePack.belongsTo(Influencer, { foreignKey: 'influencerId' });
 
-module.exports = { sequelize, User, Influencer, Brand, Ad, Application, Payout, OtpRequest, RefreshToken, Post, InfluencerAdMedia, InfluencerPricing, InfluencerKyc, InfluencerPaymentMethod, ProfilePack, LandingContent, SeoPage };
+// Referral commissions associations
+Influencer.hasMany(ReferralCommission, { foreignKey: 'referrerInfluencerId' });
+ReferralCommission.belongsTo(Influencer, { foreignKey: 'referrerInfluencerId' });
+
+module.exports = { sequelize, User, Influencer, Brand, Ad, Application, Payout, OtpRequest, RefreshToken, Post, InfluencerAdMedia, InfluencerPricing, InfluencerKyc, InfluencerPaymentMethod, ProfilePack, LandingContent, SeoPage, ReferralCommission };
 module.exports.Language = Language;
 module.exports.Category = Category;
 module.exports.InfluencerCategory = InfluencerCategory;

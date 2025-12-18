@@ -30,6 +30,12 @@ module.exports = (sequelize, DataTypes) => {
     schemaJson: { type: DataTypes.JSONB, defaultValue: {} },
     indexed: { type: DataTypes.BOOLEAN, defaultValue: false },
     adPricing: { type: DataTypes.JSONB, defaultValue: {} },
+    // Referrals
+    referralCode: { type: DataTypes.STRING(32), unique: true },
+    referredByInfluencerId: { type: DataTypes.INTEGER },
+    referralLinkedAt: { type: DataTypes.DATE },
+    // Badge progress / gamification
+    completedAdsCount: { type: DataTypes.INTEGER, defaultValue: 0 },
     ulid: { type: DataTypes.STRING(26), allowNull: false, unique: true },
   }, {
     tableName: 'Influencers',
