@@ -59,6 +59,9 @@
       "name": "Landing"
     },
     {
+      "name": "Admin"
+    },
+    {
       "name": "Superadmin"
     }
   ],
@@ -305,6 +308,7 @@
     "/api/superadmin/referral-commissions": {
       "get": {
         "tags": [
+          "Admin",
           "Superadmin"
         ],
         "summary": "Superadmin: list referral commissions",
@@ -344,6 +348,53 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/SuperadminReferralCommissionListResponse"
+                },
+                "examples": {
+                  "example": {
+                    "value": {
+                      "total": 2,
+                      "limit": 20,
+                      "offset": 0,
+                      "items": [
+                        {
+                          "id": 101,
+                          "amount": 100,
+                          "status": "earned",
+                          "payoutId": 555,
+                          "createdAt": "2025-12-18T10:00:00.000Z",
+                          "updatedAt": "2025-12-18T10:00:00.000Z",
+                          "referrerInfluencer": {
+                            "influencerIdUlid": "01JFDZ3H3H8K2J4K9Q0G2Y8Z7A",
+                            "handle": "referrer",
+                            "name": "Referrer A"
+                          },
+                          "sourceInfluencer": {
+                            "influencerIdUlid": "01JFDZ3N0Q6X8J0F5R7N2H6E3B",
+                            "handle": "source",
+                            "name": "Source B"
+                          }
+                        },
+                        {
+                          "id": 102,
+                          "amount": 250,
+                          "status": "paid",
+                          "payoutId": 556,
+                          "createdAt": "2025-12-18T09:00:00.000Z",
+                          "updatedAt": "2025-12-18T12:34:56.000Z",
+                          "referrerInfluencer": {
+                            "influencerIdUlid": "01JFDZ3H3H8K2J4K9Q0G2Y8Z7A",
+                            "handle": "referrer",
+                            "name": "Referrer A"
+                          },
+                          "sourceInfluencer": {
+                            "influencerIdUlid": "01JFDZ3N0Q6X8J0F5R7N2H6E3B",
+                            "handle": "source",
+                            "name": "Source B"
+                          }
+                        }
+                      ]
+                    }
+                  }
                 }
               }
             }
@@ -374,6 +425,7 @@
     "/api/superadmin/referral-commissions/{id}/paid": {
       "put": {
         "tags": [
+          "Admin",
           "Superadmin"
         ],
         "summary": "Superadmin: mark referral commission paid",
@@ -400,6 +452,27 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/SuperadminReferralCommissionMarkPaidResponse"
+                },
+                "examples": {
+                  "paid": {
+                    "value": {
+                      "ok": true,
+                      "commission": {
+                        "id": 101,
+                        "amount": 100,
+                        "status": "paid",
+                        "payoutId": 555,
+                        "referrerInfluencerId": 12,
+                        "sourceInfluencerId": 98,
+                        "meta": {
+                          "paidAt": "2025-12-18T12:34:56.000Z",
+                          "paidByUserId": 1
+                        },
+                        "createdAt": "2025-12-18T10:00:00.000Z",
+                        "updatedAt": "2025-12-18T12:34:56.000Z"
+                      }
+                    }
+                  }
                 }
               }
             }
@@ -5040,6 +5113,31 @@
             "type": "array",
             "items": { "$ref": "#/components/schemas/SuperadminReferralCommissionItem" }
           }
+        },
+        "example": {
+          "total": 2,
+          "limit": 20,
+          "offset": 0,
+          "items": [
+            {
+              "id": 101,
+              "amount": 100,
+              "status": "earned",
+              "payoutId": 555,
+              "createdAt": "2025-12-18T10:00:00.000Z",
+              "updatedAt": "2025-12-18T10:00:00.000Z",
+              "referrerInfluencer": {
+                "influencerIdUlid": "01JFDZ3H3H8K2J4K9Q0G2Y8Z7A",
+                "handle": "referrer",
+                "name": "Referrer A"
+              },
+              "sourceInfluencer": {
+                "influencerIdUlid": "01JFDZ3N0Q6X8J0F5R7N2H6E3B",
+                "handle": "source",
+                "name": "Source B"
+              }
+            }
+          ]
         }
       },
       "SuperadminReferralCommissionItem": {
@@ -5088,6 +5186,23 @@
               "createdAt": { "type": "string" },
               "updatedAt": { "type": "string" }
             }
+          }
+        },
+        "example": {
+          "ok": true,
+          "commission": {
+            "id": 101,
+            "amount": 100,
+            "status": "paid",
+            "payoutId": 555,
+            "referrerInfluencerId": 12,
+            "sourceInfluencerId": 98,
+            "meta": {
+              "paidAt": "2025-12-18T12:34:56.000Z",
+              "paidByUserId": 1
+            },
+            "createdAt": "2025-12-18T10:00:00.000Z",
+            "updatedAt": "2025-12-18T12:34:56.000Z"
           }
         }
       },
