@@ -748,7 +748,7 @@ exports.requestMpinReset = async (req, res) => {
 // Generic OTP request for phone verification (signup/linking)
 exports.requestOtp = async (req, res) => {
   try {
-    const { phone, purpose, email } = req.body || {};
+    const { phone, email } = req.body || {};
     if (!phone) return res.status(400).json({ error: 'phone is required' });
 
     // Basic abuse protection (DB-backed; defaults to 3 requests / 10 minutes).
@@ -767,7 +767,8 @@ exports.requestOtp = async (req, res) => {
         await sendWhatsappOtp({
           phone: String(phone),
           otp: String(otp),
-          purpose: purpose ? String(purpose) : 'google_link',
+          // Use the same approved WhatsApp template as MPIN reset.
+          purpose: 'mpin_reset',
           email: email ? String(email) : null
         });
       } catch (e) {
