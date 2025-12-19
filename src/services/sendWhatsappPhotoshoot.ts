@@ -111,6 +111,10 @@ async function sendPhotoshootRequestCreated({ req, phone, influencerName, reques
   const languageCode = process.env.WHATSAPP_PHOTOSHOOT_REQUEST_CREATED_TEMPLATE_LANG || 'en_US';
   const includeButton = String(process.env.WHATSAPP_PHOTOSHOOT_REQUEST_CREATED_INCLUDE_BUTTON_URL || 'false').toLowerCase() === 'true';
 
+  // Some templates use only {{1}} (influencerName). Others may also include {{2}} (requestUlid).
+  // Configure with WHATSAPP_PHOTOSHOOT_REQUEST_CREATED_BODY_MODE=name_only|name_ulid
+  const bodyMode = String(process.env.WHATSAPP_PHOTOSHOOT_REQUEST_CREATED_BODY_MODE || 'name_ulid').toLowerCase();
+
   const buttonMode = String(process.env.WHATSAPP_PHOTOSHOOT_REQUEST_CREATED_BUTTON_PARAM || 'ulid').toLowerCase();
   const base = absoluteBaseUrl(req);
   const path = String(process.env.PHOTOSHOOT_FRONTEND_PATH || '/photoshoots').trim();
@@ -118,7 +122,10 @@ async function sendPhotoshootRequestCreated({ req, phone, influencerName, reques
   const buttonParam = buttonMode === 'url' ? url : String(requestUlid);
 
   const to = normalizeWhatsAppTo(phone);
-  const bodyTextParams = [String(influencerName || 'Creator'), String(requestUlid)];
+  const bodyTextParams =
+    bodyMode === 'name_only'
+      ? [String(influencerName || 'Creator')]
+      : [String(influencerName || 'Creator'), String(requestUlid)];
 
   await sendWhatsappTemplate({
     to,
