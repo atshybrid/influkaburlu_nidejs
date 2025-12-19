@@ -1,11 +1,42 @@
-const { Ad, Brand } = require('../models');
+const { Ad, Brand, BrandMember } = require('../models');
 const { Op } = require('sequelize');
+
+async function resolveTargetBrandForRequest(req, { allowOwnedBrandFallback = true } = {}) {
+  const userId = req.user?.id;
+  if (!userId) return null;
+
+  const body = req.body || {};
+  const brandUlid = body.brandUlid || body.brandIdUlid || req.query?.brandUlid || req.query?.brandIdUlid || null;
+  const brandIdRaw = body.brandId || req.query?.brandId || null;
+  const brandId = brandIdRaw != null ? parseInt(String(brandIdRaw), 10) : null;
+
+  // Brand users: keep backward compatibility (brand inferred from owner userId)
+  if (allowOwnedBrandFallback && !brandUlid && !brandId) {
+    const owned = await Brand.findOne({ where: { userId } });
+    if (owned) return owned;
+  }
+
+  const target = brandUlid
+    ? await Brand.findOne({ where: { ulid: String(brandUlid) } })
+    : (brandId ? await Brand.findByPk(brandId) : null);
+  if (!target) return null;
+
+  // Owner always allowed
+  if (target.userId === userId) return target;
+
+  // PR user (or any brand member) must be explicitly mapped
+  const member = await BrandMember.findOne({ where: { brandId: target.id, userId, memberRole: 'pr' } });
+  if (!member) return null;
+  return target;
+}
 
 exports.createAd = async (req, res) => {
   try {
-    const brand = await Brand.findOne({ where: { userId: req.user.id } });
-    if (!brand) return res.status(400).json({ error: 'Brand not found' });
-    const body = { ...req.body, brandId: brand.id };
+    const brand = await resolveTargetBrandForRequest(req);
+    if (!brand) return res.status(403).json({ error: 'Forbidden' });
+    const body = { ...req.body, brandId: brand.id, createdByUserId: req.user.id, updatedByUserId: req.user.id };
+    delete body.brandUlid;
+    delete body.brandIdUlid;
     const ad = await Ad.create(body);
     // Auto-create a Post of type 'ad' for feed visibility
     try {
@@ -47,10 +78,16 @@ exports.updateAd = async (req, res) => {
     const ad = await Ad.findByPk(id);
     if (!ad) return res.status(404).json({ error: 'Ad not found' });
     const brand = await Brand.findOne({ where: { id: ad.brandId } });
-    if (!brand || brand.userId !== req.user.id) return res.status(403).json({ error: 'Forbidden' });
+    if (!brand) return res.status(404).json({ error: 'Brand not found' });
+    const isOwner = brand.userId === req.user.id;
+    const isPrMember = !isOwner
+      ? await BrandMember.findOne({ where: { brandId: brand.id, userId: req.user.id, memberRole: 'pr' } })
+      : null;
+    if (!isOwner && !isPrMember) return res.status(403).json({ error: 'Forbidden' });
     const allowed = ['title','description','targetStates','language','payPerInfluencer','categories','deliverables','briefUrl','mediaRefs','timeline','budget'];
     const updates: any = {};
     for (const key of allowed) if (key in req.body) updates[key] = req.body[key];
+    updates.updatedByUserId = req.user.id;
     await ad.update(updates);
     res.json({ ...ad.toJSON(), idUlid: ad.ulid });
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -110,7 +147,12 @@ exports.initiatePayment = async (req, res) => {
     const ad = await Ad.findByPk(id);
     if (!ad) return res.status(404).json({ error: 'Ad not found' });
     const brand = await Brand.findOne({ where: { id: ad.brandId } });
-    if (!brand || brand.userId !== req.user.id) return res.status(403).json({ error: 'Forbidden' });
+    if (!brand) return res.status(404).json({ error: 'Brand not found' });
+    const isOwner = brand.userId === req.user.id;
+    const isPrMember = !isOwner
+      ? await BrandMember.findOne({ where: { brandId: brand.id, userId: req.user.id, memberRole: 'pr' } })
+      : null;
+    if (!isOwner && !isPrMember) return res.status(403).json({ error: 'Forbidden' });
     const { createOrder } = require('../services/razorpay');
     const order = await createOrder({ amount, currency, notes: { ...(notes||{}), adId: id } });
     res.json({ orderId: order.id, amount: order.amount, currency: order.currency, keyId: process.env.RAZORPAY_KEY_ID });

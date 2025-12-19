@@ -128,6 +128,14 @@ async function connectWithRetry(retries = 8, delayMs = 1500) {
       console.warn('Warning: ensureUserAuthColumns failed:', e?.message || e);
     }
 
+    try {
+      if (typeof db.ensureInfluencerUlidColumn === 'function') {
+        await db.ensureInfluencerUlidColumn();
+      }
+    } catch (e) {
+      console.warn('Warning: ensureInfluencerUlidColumn failed:', e?.message || e);
+    }
+
       await db.sequelize.sync();
       console.log('Database connected and synced');
       return;

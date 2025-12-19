@@ -29,6 +29,9 @@
       "name": "Influencers"
     },
     {
+      "name": "Photoshoots"
+    },
+    {
       "name": "Posts"
     },
     {
@@ -42,6 +45,9 @@
     },
     {
       "name": "Brands"
+    },
+    {
+      "name": "PR"
     },
     {
       "name": "Uploads"
@@ -299,6 +305,991 @@
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/superadmin/photoshoots/requests": {
+      "get": {
+        "tags": [
+          "Superadmin",
+          "Photoshoots"
+        ],
+        "summary": "Superadmin: list photoshoot requests",
+        "security": [
+          { "bearerAuth": [] }
+        ],
+        "parameters": [
+          { "name": "status", "in": "query", "required": false, "schema": { "type": "string", "description": "pending|approved|scheduled|rejected" } },
+          { "name": "limit", "in": "query", "required": false, "schema": { "type": "integer", "default": 20, "minimum": 1, "maximum": 100 } },
+          { "name": "offset", "in": "query", "required": false, "schema": { "type": "integer", "default": 0, "minimum": 0 } }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SuperadminPhotoshootRequestListResponse" },
+                "examples": {
+                  "example": {
+                    "summary": "List pending requests",
+                    "value": {
+                      "total": 1,
+                      "limit": 20,
+                      "offset": 0,
+                      "items": [
+                        {
+                          "ulid": "01JZZZZ1234EFGH5678IJKL901",
+                          "status": "pending",
+                          "influencer": {
+                            "id": 123,
+                            "ulid": "01JYYYYY1234EFGH5678IJKL901",
+                            "handle": "rahul_fitlife",
+                            "user": { "id": 456, "name": "Rahul Kumar", "phone": "9000000000", "email": "rahul@example.com" }
+                          },
+                          "requestedStartAt": null,
+                          "requestedEndAt": null,
+                          "scheduledStartAt": null,
+                          "scheduledEndAt": null,
+                          "rejectReason": null,
+                          "createdAt": "2025-12-19T08:00:00.000Z",
+                          "updatedAt": "2025-12-19T08:00:00.000Z"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "description": "Unauthorized" },
+          "403": { "description": "Forbidden" }
+        }
+      }
+    },
+    "/api/superadmin/photoshoots/requests/{ulid}": {
+      "get": {
+        "tags": [
+          "Superadmin",
+          "Photoshoots"
+        ],
+        "summary": "Superadmin: get photoshoot request",
+        "security": [
+          { "bearerAuth": [] }
+        ],
+        "parameters": [
+          { "name": "ulid", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SuperadminPhotoshootRequestGetResponse" },
+                "examples": {
+                  "example": {
+                    "summary": "Get request",
+                    "value": {
+                      "ok": true,
+                      "request": {
+                        "ulid": "01JZZZZ1234EFGH5678IJKL901",
+                        "status": "pending",
+                        "influencer": {
+                          "id": 123,
+                          "ulid": "01JYYYYY1234EFGH5678IJKL901",
+                          "handle": "rahul_fitlife",
+                          "user": { "id": 456, "name": "Rahul Kumar", "phone": "9000000000", "email": "rahul@example.com" }
+                        },
+                        "details": { "influencerAppointmentDetails": { "personal": { "fullName": "Rahul Kumar", "city": "Hyderabad" } } },
+                        "requestedStartAt": null,
+                        "requestedEndAt": null,
+                        "requestedTimezone": null,
+                        "scheduledStartAt": null,
+                        "scheduledEndAt": null,
+                        "scheduledTimezone": null,
+                        "location": {},
+                        "rejectReason": null,
+                        "adminNotes": null,
+                        "approvedAt": null,
+                        "approvedByUserId": null,
+                        "scheduledAt": null,
+                        "scheduledByUserId": null,
+                        "createdAt": "2025-12-19T08:00:00.000Z",
+                        "updatedAt": "2025-12-19T08:00:00.000Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "description": "Unauthorized" },
+          "403": { "description": "Forbidden" },
+          "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+        }
+      }
+    },
+    "/api/superadmin/photoshoots/requests/{ulid}/approve": {
+      "put": {
+        "tags": [
+          "Superadmin",
+          "Photoshoots"
+        ],
+        "summary": "Superadmin: approve photoshoot request",
+        "security": [
+          { "bearerAuth": [] }
+        ],
+        "parameters": [
+          { "name": "ulid", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SuperadminPhotoshootRequestStatusResponse" },
+                "examples": {
+                  "example": {
+                    "summary": "Approved",
+                    "value": {
+                      "ok": true,
+                      "request": {
+                        "ulid": "01JZZZZ1234EFGH5678IJKL901",
+                        "status": "approved",
+                        "approvedAt": "2025-12-19T10:00:00.000Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "description": "Unauthorized" },
+          "403": { "description": "Forbidden" },
+          "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "409": { "description": "Conflict", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+        }
+      }
+    },
+    "/api/superadmin/photoshoots/requests/{ulid}/reject": {
+      "put": {
+        "tags": [
+          "Superadmin",
+          "Photoshoots"
+        ],
+        "summary": "Superadmin: reject photoshoot request",
+        "security": [
+          { "bearerAuth": [] }
+        ],
+        "parameters": [
+          { "name": "ulid", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/SuperadminPhotoshootRejectRequest" },
+              "examples": {
+                "example": {
+                  "summary": "Reject with reason",
+                  "value": { "reason": "No available slot in requested week" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SuperadminPhotoshootRequestStatusResponse" },
+                "examples": {
+                  "example": {
+                    "summary": "Rejected",
+                    "value": {
+                      "ok": true,
+                      "request": {
+                        "ulid": "01JZZZZ1234EFGH5678IJKL901",
+                        "status": "rejected",
+                        "rejectReason": "No available slot in requested week"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "Bad request", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "401": { "description": "Unauthorized" },
+          "403": { "description": "Forbidden" },
+          "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "409": { "description": "Conflict", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+        }
+      }
+    },
+    "/api/superadmin/photoshoots/requests/{ulid}/schedule": {
+      "put": {
+        "tags": [
+          "Superadmin",
+          "Photoshoots"
+        ],
+        "summary": "Superadmin: set final shoot date/time",
+        "description": "Sets the final schedule. Moves request from approved -> scheduled. If WhatsApp is configured, a template notification may be sent to the influencer (best-effort; does not affect the API response).",
+        "security": [
+          { "bearerAuth": [] }
+        ],
+        "parameters": [
+          { "name": "ulid", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/SuperadminPhotoshootScheduleRequest" },
+              "examples": {
+                "example": {
+                  "summary": "Set final schedule",
+                  "value": {
+                    "scheduledTimezone": "Asia/Kolkata",
+                    "scheduledStartAt": "2025-12-26T11:00:00+05:30",
+                    "scheduledEndAt": "2025-12-26T13:00:00+05:30",
+                    "location": { "city": "Hyderabad", "address": "Kaburlu Studio" },
+                    "adminNotes": "Please arrive 15 minutes early"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SuperadminPhotoshootRequestStatusResponse" },
+                "examples": {
+                  "example": {
+                    "summary": "Scheduled",
+                    "value": {
+                      "ok": true,
+                      "request": {
+                        "ulid": "01JZZZZ1234EFGH5678IJKL901",
+                        "status": "scheduled",
+                        "scheduledStartAt": "2025-12-26T05:30:00.000Z",
+                        "scheduledEndAt": "2025-12-26T07:30:00.000Z",
+                        "scheduledTimezone": "Asia/Kolkata",
+                        "location": { "city": "Hyderabad", "address": "Kaburlu Studio" },
+                        "scheduledAt": "2025-12-19T10:30:00.000Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "Bad request", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "401": { "description": "Unauthorized" },
+          "403": { "description": "Forbidden" },
+          "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "409": { "description": "Conflict", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+        }
+      }
+    },
+    "/api/superadmin/prs": {
+      "post": {
+        "tags": [
+          "Admin",
+          "Superadmin"
+        ],
+        "summary": "Superadmin: hire/create PR user",
+        "description": "Creates (or upgrades) a user as PR (Public Relation) under superadmin control.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SuperadminCreatePrUserRequest"
+              },
+              "examples": {
+                "example": {
+                  "value": {
+                    "name": "Kaburlu PR 1",
+                    "phone": "9000000001",
+                    "email": "pr1@kaburlu.test",
+                    "password": "StrongPassword@123"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuperadminCreatePrUserResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/superadmin/brands/{brandUlid}/pr": {
+      "post": {
+        "tags": [
+          "Admin",
+          "Superadmin"
+        ],
+        "summary": "Superadmin: grant brand access to PR",
+        "description": "Assigns a PR user to a specific brand (brand-scoped access).",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "brandUlid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SuperadminAssignPrToBrandRequest"
+              },
+              "examples": {
+                "example": {
+                  "value": {
+                    "prPhone": "9000000001",
+                    "isPrimary": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuperadminAssignPrToBrandResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/superadmin/pr-commissions": {
+      "get": {
+        "tags": [
+          "Admin",
+          "Superadmin"
+        ],
+        "summary": "Superadmin: list PR commissions",
+        "description": "Lists PR commission ledger rows for operational payout/settlement.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuperadminPrCommissionListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/superadmin/pr-commissions/{id}/paid": {
+      "put": {
+        "tags": [
+          "Admin",
+          "Superadmin"
+        ],
+        "summary": "Superadmin: mark PR commission as paid",
+        "description": "Marks a PR commission row as paid (idempotent).",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuperadminPrCommissionMarkPaidResponse"
+                },
+                "examples": {
+                  "example": {
+                    "value": {
+                      "ok": true,
+                      "commission": {
+                        "id": 201,
+                        "amount": 150,
+                        "status": "paid",
+                        "prUserId": 45,
+                        "brandId": 12,
+                        "adId": 1001,
+                        "applicationId": 5001,
+                        "payoutId": 555,
+                        "meta": {
+                          "paidAt": "2025-12-18T12:34:56.000Z",
+                          "paidByUserId": 1
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/pr/brands": {
+      "get": {
+        "tags": [
+          "PR"
+        ],
+        "summary": "PR: list my assigned brands",
+        "description": "Lists brands that the current PR user has access to (via BrandMembers).",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrBrandListResponse"
+                },
+                "examples": {
+                  "assignedBrands": {
+                    "summary": "PR assigned brands",
+                    "value": {
+                      "total": 2,
+                      "items": [
+                        {
+                          "membership": {
+                            "id": 101,
+                            "memberRole": "pr",
+                            "isPrimary": true,
+                            "createdAt": "2025-12-19T10:00:00.000Z"
+                          },
+                          "brand": {
+                            "id": 12,
+                            "ulid": "01JFDQ8K8H3JY8YVQJ0A1B2C3D",
+                            "companyName": "Acme Brands",
+                            "name": null
+                          }
+                        },
+                        {
+                          "membership": {
+                            "id": 102,
+                            "memberRole": "pr",
+                            "isPrimary": false,
+                            "createdAt": "2025-12-19T10:05:00.000Z"
+                          },
+                          "brand": {
+                            "id": 13,
+                            "ulid": "01JFDQ8K8H3JY8YVQJ0A1B2C3E",
+                            "companyName": "Nova Media",
+                            "name": null
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/pr/brands/{brandUlid}/ads": {
+      "get": {
+        "tags": [
+          "PR",
+          "Ads"
+        ],
+        "summary": "PR: list ads for a brand",
+        "description": "Lists ads for a specific brand that the current PR user is assigned to.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "brandUlid",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "minimum": 1, "maximum": 200, "default": 50 }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "minimum": 0, "default": 0 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrBrandAdsListResponse"
+                },
+                "examples": {
+                  "brandAds": {
+                    "summary": "Ads for selected brand",
+                    "value": {
+                      "brand": {
+                        "id": 12,
+                        "ulid": "01JFDQ8K8H3JY8YVQJ0A1B2C3D",
+                        "companyName": "Acme Brands"
+                      },
+                      "total": 2,
+                      "limit": 50,
+                      "offset": 0,
+                      "items": [
+                        {
+                          "id": 1001,
+                          "idUlid": "01JFDQ8K8H3JY8YVQJ0AD1001",
+                          "brandId": 12,
+                          "title": "Instagram Reels Campaign",
+                          "description": "Create 1 reel + 1 story",
+                          "language": "en",
+                          "targetStates": ["TG"],
+                          "budget": 20000,
+                          "payPerInfluencer": 2000,
+                          "categories": ["Fashion"],
+                          "deliverables": ["reel", "story"],
+                          "briefUrl": null,
+                          "budgetPaid": true,
+                          "status": "active",
+                          "createdAt": "2025-12-19T09:00:00.000Z",
+                          "updatedAt": "2025-12-19T09:00:00.000Z"
+                        },
+                        {
+                          "id": 1002,
+                          "idUlid": "01JFDQ8K8H3JY8YVQJ0AD1002",
+                          "brandId": 12,
+                          "title": "YouTube Shorts Campaign",
+                          "description": "Create 1 short video",
+                          "language": "en",
+                          "targetStates": ["TG"],
+                          "budget": 30000,
+                          "payPerInfluencer": 3000,
+                          "categories": ["Tech"],
+                          "deliverables": ["short"],
+                          "briefUrl": null,
+                          "budgetPaid": false,
+                          "status": "draft",
+                          "createdAt": "2025-12-19T09:10:00.000Z",
+                          "updatedAt": "2025-12-19T09:10:00.000Z"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/pr/ads/{id}": {
+      "get": {
+        "tags": [
+          "PR",
+          "Ads"
+        ],
+        "summary": "PR: get ad (scoped)",
+        "description": "Fetches an ad by id if the current PR user is assigned to the owning brand.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/PrAdGetResponse" }
+                ,
+                "examples": {
+                  "ad": {
+                    "summary": "Single ad (scoped)",
+                    "value": {
+                      "id": 1001,
+                      "idUlid": "01JFDQ8K8H3JY8YVQJ0AD1001",
+                      "brandId": 12,
+                      "title": "Instagram Reels Campaign",
+                      "description": "Create 1 reel + 1 story",
+                      "language": "en",
+                      "targetStates": ["TG"],
+                      "payPerInfluencer": 2000,
+                      "budget": 20000,
+                      "categories": ["Fashion"],
+                      "deliverables": ["reel", "story"],
+                      "briefUrl": null,
+                      "budgetPaid": true,
+                      "status": "active",
+                      "brand": {
+                        "id": 12,
+                        "ulid": "01JFDQ8K8H3JY8YVQJ0A1B2C3D",
+                        "companyName": "Acme Brands"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/pr/commissions": {
+      "get": {
+        "tags": [
+          "PR"
+        ],
+        "summary": "PR: list my commissions",
+        "description": "Lists PR commission ledger rows for the current PR user.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "description": "Optional filter (earned|paid)" }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "minimum": 0, "default": 0 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/PrCommissionListResponse" }
+                ,
+                "examples": {
+                  "commissions": {
+                    "summary": "PR commission ledger",
+                    "value": {
+                      "total": 2,
+                      "limit": 20,
+                      "offset": 0,
+                      "items": [
+                        {
+                          "id": 9001,
+                          "amount": 1500,
+                          "status": "earned",
+                          "brandId": 12,
+                          "brand": {
+                            "id": 12,
+                            "ulid": "01JFDQ8K8H3JY8YVQJ0A1B2C3D",
+                            "companyName": "Acme Brands",
+                            "name": null
+                          },
+                          "adId": 1001,
+                          "applicationId": 5001,
+                          "payoutId": 555,
+                          "meta": {
+                            "mode": "gross",
+                            "rate": 0.05
+                          },
+                          "createdAt": "2025-12-19T11:00:00.000Z",
+                          "updatedAt": "2025-12-19T11:00:00.000Z"
+                        },
+                        {
+                          "id": 9002,
+                          "amount": 800,
+                          "status": "paid",
+                          "brandId": 13,
+                          "brand": {
+                            "id": 13,
+                            "ulid": "01JFDQ8K8H3JY8YVQJ0A1B2C3E",
+                            "companyName": "Nova Media",
+                            "name": null
+                          },
+                          "adId": 1002,
+                          "applicationId": 5002,
+                          "payoutId": 556,
+                          "meta": {
+                            "mode": "commission",
+                            "rate": 0.2,
+                            "paidAt": "2025-12-19T12:34:56.000Z"
+                          },
+                          "createdAt": "2025-12-19T11:05:00.000Z",
+                          "updatedAt": "2025-12-19T12:34:56.000Z"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
               }
             }
           }
@@ -942,7 +1933,7 @@
           "Auth"
         ],
         "summary": "Request OTP (phone verification)",
-        "description": "Creates a short-lived OTP for the given phone. In production, OTP is sent via SMS provider (server-side integration required).",
+        "description": "Creates a short-lived OTP for the given phone. In production, OTP is sent via WhatsApp Cloud API using a pre-approved template (configure WHATSAPP_* env vars).",
         "security": [],
         "requestBody": {
           "required": true,
@@ -951,8 +1942,21 @@
               "schema": {
                 "$ref": "#/components/schemas/AuthOtpRequest"
               },
-              "example": {
-                "phone": "8888888888"
+              "examples": {
+                "googleLink": {
+                  "summary": "Gmail/Google linking OTP (WhatsApp)",
+                  "value": {
+                    "phone": "919000000000",
+                    "purpose": "google_link",
+                    "email": "rahul.kumar@gmail.com"
+                  }
+                },
+                "generic": {
+                  "summary": "Generic phone OTP",
+                  "value": {
+                    "phone": "919000000000"
+                  }
+                }
               }
             }
           }
@@ -964,12 +1968,38 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AuthOtpResponse"
+                },
+                "examples": {
+                  "prod": {
+                    "summary": "Production (OTP delivered via WhatsApp)",
+                    "value": { "requestId": "req_4c2a8c8a2f3b1d0e" }
+                  },
+                  "dev": {
+                    "summary": "Non-production (OTP echoed)",
+                    "value": { "requestId": "req_4c2a8c8a2f3b1d0e", "otp": "123456" }
+                  }
                 }
               }
             }
           },
           "400": {
             "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "502": {
+            "description": "OTP provider error",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/ErrorResponse" }
@@ -1340,6 +2370,7 @@
           "Auth"
         ],
         "summary": "Request MPIN reset",
+        "description": "Creates a short-lived OTP for MPIN reset. In production, OTP is sent via WhatsApp Cloud API using a pre-approved template (configure WHATSAPP_* env vars).",
         "security": [],
         "requestBody": {
           "required": true,
@@ -1348,8 +2379,11 @@
               "schema": {
                 "$ref": "#/components/schemas/MpinResetRequest"
               },
-              "example": {
-                "phone": "8282868389"
+              "examples": {
+                "example": {
+                  "summary": "Request MPIN reset OTP (WhatsApp)",
+                  "value": { "phone": "919000000000" }
+                }
               }
             }
           }
@@ -1362,12 +2396,44 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "requestId": { "type": "string" }
+                    "requestId": { "type": "string" },
+                    "otp": { "type": "string", "description": "Returned only in non-production for debugging/testing." }
                   }
                 },
-                "example": {
-                  "requestId": "req_4c2a8c8a2f3b1d0e"
+                "examples": {
+                  "prod": {
+                    "summary": "Production (OTP delivered via WhatsApp)",
+                    "value": { "requestId": "req_4c2a8c8a2f3b1d0e" }
+                  },
+                  "dev": {
+                    "summary": "Non-production (OTP echoed)",
+                    "value": { "requestId": "req_4c2a8c8a2f3b1d0e", "otp": "123456" }
+                  }
                 }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "502": {
+            "description": "OTP provider error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
               }
             }
           }
@@ -1930,6 +2996,51 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/InfluencerUpdateRequest"
+              },
+              "examples": {
+                "followersAndLinks": {
+                  "summary": "Advanced: followers + social links (all platforms)",
+                  "value": {
+                    "handle": "rahul_fitlife",
+                    "bio": "Fitness + lifestyle creator. Reels, product reviews, and brand collabs.",
+                    "followers": {
+                      "instagram": 12500,
+                      "youtube": 8400,
+                      "tiktok": 30200,
+                      "facebook": 4100,
+                      "x": 9200,
+                      "snapchat": 15000,
+                      "linkedin": 800,
+                      "pinterest": 1200,
+                      "threads": 5000,
+                      "telegram": 3000,
+                      "websiteMonthlyVisitors": 45000,
+                      "engagementRate": 2.1
+                    },
+                    "socialLinks": {
+                      "instagram": "https://instagram.com/rahul_fitlife",
+                      "youtube": "https://youtube.com/@rahulfitlife",
+                      "tiktok": "https://tiktok.com/@rahulfitlife",
+                      "facebook": "https://facebook.com/rahul.fitlife",
+                      "x": "https://x.com/rahul_fitlife",
+                      "snapchat": "https://www.snapchat.com/add/rahulfitlife",
+                      "linkedin": "https://www.linkedin.com/in/rahul-fitlife",
+                      "pinterest": "https://www.pinterest.com/rahulfitlife",
+                      "threads": "https://www.threads.net/@rahul_fitlife",
+                      "telegram": "https://t.me/rahulfitlife",
+                      "website": "https://rahulfitlife.com"
+                    }
+                  }
+                },
+                "followersOnly": {
+                  "summary": "Update only followers",
+                  "value": {
+                    "followers": {
+                      "instagram": 13000,
+                      "youtube": 8600
+                    }
+                  }
+                }
               }
             }
           }
@@ -2138,6 +3249,517 @@
             }
           },
           "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/api/influencers/me/referral/invite": {
+      "post": {
+        "tags": [
+          "Influencers"
+        ],
+        "summary": "Send referral invite (WhatsApp)",
+        "description": "Sends a WhatsApp marketing template to invite someone using the current influencer's referral code. Returns a frontend shareUrl that includes the referral code.",
+        "security": [
+          { "bearerAuth": [] }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/InfluencerReferralInviteRequest" },
+              "examples": {
+                "minimal": {
+                  "summary": "Minimal (phone only)",
+                  "value": { "phone": "919000000000" }
+                },
+                "named": {
+                  "summary": "With receiver name",
+                  "value": { "phone": "919000000000", "receiverName": "Nagendra" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/InfluencerReferralInviteResponse" },
+                "examples": {
+                  "example": {
+                    "summary": "Invite accepted by WhatsApp",
+                    "value": {
+                      "ok": true,
+                      "referralCode": "AB12CD34",
+                      "shareUrl": "https://your-frontend-domain.com/referral?code=AB12CD34",
+                      "whatsapp": {
+                        "messaging_product": "whatsapp",
+                        "contacts": [{ "input": "919000000000", "wa_id": "919000000000" }],
+                        "messages": [{ "id": "wamid.HBgMOTE5MDAwMDAwMDAwFQIAERgSODc1QjY1QjU2QjE2RkFBQ0E1AA==" }]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "Bad request", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "401": { "description": "Unauthorized" },
+          "429": { "description": "Too many requests", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "502": { "description": "WhatsApp send failed", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+        }
+      }
+    },
+    "/api/influencers/me/photoshoots/requests": {
+      "get": {
+        "tags": [
+          "Influencers",
+          "Photoshoots"
+        ],
+        "summary": "Influencer: list my photoshoot requests",
+        "security": [
+          { "bearerAuth": [] }
+        ],
+        "parameters": [
+          { "name": "limit", "in": "query", "required": false, "schema": { "type": "integer", "default": 20, "minimum": 1, "maximum": 100 } },
+          { "name": "offset", "in": "query", "required": false, "schema": { "type": "integer", "default": 0, "minimum": 0 } }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/InfluencerPhotoshootRequestListResponse" },
+                "examples": {
+                  "example": {
+                    "summary": "List with one request",
+                    "value": {
+                      "total": 1,
+                      "limit": 20,
+                      "offset": 0,
+                      "items": [
+                        {
+                          "ulid": "01JZZZZ1234EFGH5678IJKL901",
+                          "status": "pending",
+                          "requestedStartAt": null,
+                          "requestedEndAt": null,
+                          "requestedTimezone": null,
+                          "scheduledStartAt": null,
+                          "scheduledEndAt": null,
+                          "scheduledTimezone": null,
+                          "location": {},
+                          "rejectReason": null,
+                          "adminNotes": null,
+                          "createdAt": "2025-12-19T08:00:00.000Z",
+                          "updatedAt": "2025-12-19T08:00:00.000Z"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "description": "Unauthorized" }
+        }
+      },
+      "post": {
+        "tags": [
+          "Influencers",
+          "Photoshoots"
+        ],
+        "summary": "Influencer: request free photoshoot",
+        "description": "Creates a photoshoot request. Consent is required: termsAccepted=true and publicDisplayConsent=true (photo usage consent for InfluKaburlu). If WhatsApp is configured, a template notification may be sent (best-effort; does not affect the API response).",
+        "security": [
+          { "bearerAuth": [] }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/InfluencerPhotoshootRequestCreate" },
+              "example": {
+                "influencerAppointmentDetails": {
+                  "personal": {
+                    "fullName": "Rahul Kumar",
+                    "displayName": "rahul_fitlife",
+                    "gender": "male",
+                    "ageConfirmed18Plus": true,
+                    "city": "Hyderabad",
+                    "state": "TG"
+                  },
+                  "bodyMeasurements": {
+                    "heightCm": 175,
+                    "weightKg": 72,
+                    "chestBustCm": 98,
+                    "waistCm": 82,
+                    "hipCm": 96,
+                    "shoulderWidthCm": 46,
+                    "shoeSize": 9
+                  },
+                  "dressDetails": {
+                    "topSize": "M",
+                    "bottomSize": "M",
+                    "dressSize": "M",
+                    "preferredOutfits": ["Casual", "Professional"],
+                    "outfitColorsPreferred": ["Black", "Brand-Colors"]
+                  },
+                  "shootPreferences": {
+                    "shootPurpose": ["Profile Branding", "Portfolio"],
+                    "shootType": ["Indoor"],
+                    "shootStyle": ["Professional", "Lifestyle"],
+                    "boldnessLevel": "Normal",
+                    "cameraComfort": {
+                      "photo": true,
+                      "video": true,
+                      "talkingShot": true,
+                      "voiceOver": true
+                    }
+                  },
+                  "stylingPermissions": {
+                    "makeupAllowed": true,
+                    "hairstyleChangesAllowed": true,
+                    "accessoriesAllowed": true,
+                    "propsAllowed": true
+                  },
+                  "editingAndUsage": {
+                    "editingPreference": ["Natural", "Retouched"],
+                    "photoshopBrandingAllowed": true,
+                    "usagePermission": ["InfluKaburlu Website", "Ads & Promotions", "Social Media", "SEO & Google Indexing"]
+                  },
+                  "consent": {
+                    "publicDisplayConsent": true,
+                    "termsAccepted": true,
+                    "date": "2025-12-19"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/InfluencerPhotoshootRequestCreateResponse" },
+                "examples": {
+                  "example": {
+                    "summary": "Created request",
+                    "value": {
+                      "ok": true,
+                      "request": {
+                        "ulid": "01JZZZZ1234EFGH5678IJKL901",
+                        "status": "pending",
+                        "details": {
+                          "influencerAppointmentDetails": {
+                            "personal": { "fullName": "Rahul Kumar", "city": "Hyderabad", "gender": "male", "bodyType": "Athletic", "skinTone": "Medium" },
+                            "bodyMeasurements": { "heightCm": 175, "shoeSize": 9 },
+                            "dressDetails": { "topSize": "M", "bottomSize": "M", "dressSize": "M", "preferredFit": "Regular", "preferredDressingStyle": ["Western"], "westernWearType": ["Jeans & Top"], "preferredOutfitColors": ["Black"] },
+                            "shootPreferences": { "shootStyle": ["Professional"], "poseComfortLevel": "Confident", "boldnessLevel": "Normal", "sleevelessAllowed": true, "cameraFacingComfort": true, "shootType": ["Indoor"] },
+                            "stylingPermissions": { "makeupPreference": "Natural", "accessoriesAllowed": true },
+                            "editingAndUsage": { "usagePermission": ["Website", "Social Media"], "photoshopBrandingAllowed": true },
+                            "consent": { "publicDisplayConsent": true, "termsAccepted": true, "date": "2025-12-19" }
+                          }
+                        },
+                        "requestedStartAt": null,
+                        "requestedEndAt": null,
+                        "requestedTimezone": null,
+                        "scheduledStartAt": null,
+                        "scheduledEndAt": null,
+                        "scheduledTimezone": null,
+                        "location": {},
+                        "updatedAt": "2025-12-19T08:00:00.000Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "Bad request", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/api/influencers/me/photoshoots/requests/book-latest": {
+      "post": {
+        "tags": [
+          "Influencers",
+          "Photoshoots"
+        ],
+        "summary": "Influencer: book latest pending request (no ulid)",
+        "description": "Books the most recently created pending photoshoot request for the logged-in influencer. Booking enforces questionnaire answers + consent. If the stored request doesn't have full answers, include them in the booking body as 'details'.",
+        "security": [
+          { "bearerAuth": [] }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/InfluencerPhotoshootBookRequest" },
+              "examples": {
+                "timeOnly": {
+                  "summary": "Book using stored questionnaire",
+                  "value": {
+                    "requestedTimezone": "Asia/Kolkata",
+                    "requestedStartAt": "2025-12-22T10:00:00+05:30",
+                    "requestedEndAt": "2025-12-22T12:00:00+05:30",
+                    "location": { "city": "Hyderabad" }
+                  }
+                },
+                "withDetails": {
+                  "summary": "Book and send questionnaire in same call",
+                  "value": {
+                    "requestedTimezone": "Asia/Kolkata",
+                    "requestedStartAt": "2025-12-22T10:00:00+05:30",
+                    "requestedEndAt": "2025-12-22T12:00:00+05:30",
+                    "details": {
+                      "influencerAppointmentDetails": {
+                        "personal": { "fullName": "Rahul Kumar", "city": "Hyderabad", "gender": "male", "bodyType": "Athletic", "skinTone": "Medium" },
+                        "bodyMeasurements": { "heightCm": 175, "shoeSize": 9 },
+                        "dressDetails": { "topSize": "M", "bottomSize": "M", "dressSize": "M", "preferredFit": "Regular", "preferredDressingStyle": ["Western"], "westernWearType": ["Jeans & Top"], "preferredOutfitColors": ["Black"] },
+                        "shootPreferences": { "shootStyle": ["Professional"], "poseComfortLevel": "Confident", "boldnessLevel": "Normal", "sleevelessAllowed": true, "cameraFacingComfort": true, "shootType": ["Indoor"] },
+                        "stylingPermissions": { "makeupPreference": "Natural", "accessoriesAllowed": true },
+                        "editingAndUsage": { "usagePermission": ["Website", "Social Media"], "photoshopBrandingAllowed": true },
+                        "consent": { "publicDisplayConsent": true, "termsAccepted": true, "date": "2025-12-19" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/InfluencerPhotoshootRequestGetResponse" },
+                "examples": {
+                  "example": {
+                    "summary": "Booked",
+                    "value": {
+                      "ok": true,
+                      "request": {
+                        "ulid": "01JZZZZ1234EFGH5678IJKL901",
+                        "status": "pending",
+                        "details": { "influencerAppointmentDetails": { "personal": { "fullName": "Rahul Kumar", "city": "Hyderabad" } } },
+                        "requestedStartAt": "2025-12-22T04:30:00.000Z",
+                        "requestedEndAt": "2025-12-22T06:30:00.000Z",
+                        "requestedTimezone": "Asia/Kolkata",
+                        "scheduledStartAt": null,
+                        "scheduledEndAt": null,
+                        "scheduledTimezone": null,
+                        "location": { "city": "Hyderabad" },
+                        "rejectReason": null,
+                        "adminNotes": null,
+                        "approvedAt": null,
+                        "scheduledAt": null,
+                        "updatedAt": "2025-12-19T09:00:00.000Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "Bad request", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "401": { "description": "Unauthorized" },
+          "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+        }
+      }
+    },
+    "/api/influencers/me/photoshoots/requests/{ulid}": {
+      "get": {
+        "tags": [
+          "Influencers",
+          "Photoshoots"
+        ],
+        "summary": "Influencer: get my photoshoot request",
+        "security": [
+          { "bearerAuth": [] }
+        ],
+        "parameters": [
+          { "name": "ulid", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/InfluencerPhotoshootRequestGetResponse" },
+                "examples": {
+                  "example": {
+                    "summary": "Get request",
+                    "value": {
+                      "ok": true,
+                      "request": {
+                        "ulid": "01JZZZZ1234EFGH5678IJKL901",
+                        "status": "pending",
+                        "details": { "influencerAppointmentDetails": { "personal": { "fullName": "Rahul Kumar", "city": "Hyderabad" } } },
+                        "requestedStartAt": null,
+                        "requestedEndAt": null,
+                        "requestedTimezone": null,
+                        "scheduledStartAt": null,
+                        "scheduledEndAt": null,
+                        "scheduledTimezone": null,
+                        "location": {},
+                        "rejectReason": null,
+                        "adminNotes": null,
+                        "approvedAt": null,
+                        "scheduledAt": null,
+                        "createdAt": "2025-12-19T08:00:00.000Z",
+                        "updatedAt": "2025-12-19T08:00:00.000Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "description": "Unauthorized" },
+          "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+        }
+      },
+      "put": {
+        "tags": [
+          "Influencers",
+          "Photoshoots"
+        ],
+        "summary": "Influencer: update my photoshoot request (pending only)",
+        "security": [
+          { "bearerAuth": [] }
+        ],
+        "parameters": [
+          { "name": "ulid", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/InfluencerPhotoshootRequestCreate" },
+              "examples": {
+                "example": {
+                  "summary": "Update questionnaire",
+                  "value": {
+                    "influencerAppointmentDetails": {
+                      "personal": { "fullName": "Rahul Kumar", "city": "Hyderabad", "gender": "male", "bodyType": "Athletic", "skinTone": "Medium" },
+                      "bodyMeasurements": { "heightCm": 175, "shoeSize": 9 },
+                      "dressDetails": { "topSize": "M", "bottomSize": "M", "dressSize": "M", "preferredFit": "Regular", "preferredDressingStyle": ["Western"], "westernWearType": ["Jeans & Top"], "preferredOutfitColors": ["Black"] },
+                      "shootPreferences": { "shootStyle": ["Professional"], "poseComfortLevel": "Confident", "boldnessLevel": "Normal", "sleevelessAllowed": true, "cameraFacingComfort": true, "shootType": ["Indoor"] },
+                      "stylingPermissions": { "makeupPreference": "Natural", "accessoriesAllowed": true },
+                      "editingAndUsage": { "usagePermission": ["Website", "Social Media"], "photoshopBrandingAllowed": true },
+                      "consent": { "publicDisplayConsent": true, "termsAccepted": true, "date": "2025-12-19" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/InfluencerPhotoshootRequestCreateResponse" },
+                "examples": {
+                  "example": {
+                    "summary": "Updated",
+                    "value": {
+                      "ok": true,
+                      "request": {
+                        "ulid": "01JZZZZ1234EFGH5678IJKL901",
+                        "status": "pending",
+                        "details": { "influencerAppointmentDetails": { "personal": { "fullName": "Rahul Kumar", "city": "Hyderabad" } } },
+                        "updatedAt": "2025-12-19T09:10:00.000Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "description": "Unauthorized" },
+          "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "409": { "description": "Conflict", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+        }
+      }
+    },
+    "/api/influencers/me/photoshoots/requests/{ulid}/book": {
+      "post": {
+        "tags": [
+          "Influencers",
+          "Photoshoots"
+        ],
+        "summary": "Influencer: book preferred appointment time (pending only)",
+        "description": "Sets the preferred appointment time. Booking enforces questionnaire answers + consent. If the stored request doesn't have full answers, include them in the booking body as 'details'. Superadmin must still approve + schedule the final shoot date/time.",
+        "security": [
+          { "bearerAuth": [] }
+        ],
+        "parameters": [
+          { "name": "ulid", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/InfluencerPhotoshootBookRequest" },
+              "examples": {
+                "timeOnly": {
+                  "summary": "Book using stored questionnaire",
+                  "value": {
+                    "requestedTimezone": "Asia/Kolkata",
+                    "requestedStartAt": "2025-12-22T10:00:00+05:30",
+                    "requestedEndAt": "2025-12-22T12:00:00+05:30",
+                    "location": { "city": "Hyderabad" }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/InfluencerPhotoshootRequestGetResponse" },
+                "examples": {
+                  "example": {
+                    "summary": "Booked",
+                    "value": {
+                      "ok": true,
+                      "request": {
+                        "ulid": "01JZZZZ1234EFGH5678IJKL901",
+                        "status": "pending",
+                        "details": { "influencerAppointmentDetails": { "personal": { "fullName": "Rahul Kumar", "city": "Hyderabad" } } },
+                        "requestedStartAt": "2025-12-22T04:30:00.000Z",
+                        "requestedEndAt": "2025-12-22T06:30:00.000Z",
+                        "requestedTimezone": "Asia/Kolkata",
+                        "scheduledStartAt": null,
+                        "scheduledEndAt": null,
+                        "scheduledTimezone": null,
+                        "location": { "city": "Hyderabad" },
+                        "rejectReason": null,
+                        "adminNotes": null,
+                        "approvedAt": null,
+                        "scheduledAt": null,
+                        "updatedAt": "2025-12-19T09:00:00.000Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "Bad request", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "401": { "description": "Unauthorized" },
+          "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "409": { "description": "Conflict", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
         }
       }
     },
@@ -3432,6 +5054,7 @@
           "Profile Builder"
         ],
         "summary": "Generate profile pack",
+        "description": "Generates an influencer profile pack. Basic mode uses name/niche/city. Advanced mode accepts a short brief + platform metrics and returns a structured brand-ready profile under jsonLd.kaburluProfile. Frontend: read rich generated sections from response.jsonLd.kaburluProfile.",
         "security": [
           {
             "bearerAuth": []
@@ -3446,7 +5069,47 @@
                 "properties": {
                   "name": { "type": "string" },
                   "niche": { "type": "string" },
-                  "city": { "type": "string" }
+                  "city": { "type": "string" },
+
+                  "brief": { "type": "string", "description": "Short influencer brief for AI (advanced mode)." },
+                  "platforms": { "type": "array", "items": { "type": "string" }, "description": "Primary platforms, e.g. Instagram, YouTube, Podcast." },
+                  "contentCategory": { "type": "string", "description": "Content category (advanced mode)." },
+                  "languages": { "type": "array", "items": { "type": "string" }, "description": "Languages spoken." },
+                  "targetRegion": { "type": "string", "description": "Target audience region/location." },
+                  "followers": { "$ref": "#/components/schemas/InfluencerFollowers" },
+                  "avgViews": {
+                    "type": "object",
+                    "description": "Average views/reach per platform (advanced mode).",
+                    "additionalProperties": { "type": "number" },
+                    "example": { "instagram": 45000, "youtube": 120000 }
+                  },
+                  "pastBrands": { "type": "array", "items": { "type": "string" }, "description": "Previous brand collaborations (optional)." },
+                  "uniqueStrength": { "type": "string", "description": "What makes the influencer different (advanced mode)." },
+                  "collaborationTypes": { "type": "array", "items": { "type": "string" }, "description": "Reels, Shorts, Story, Podcast, Interview, Web Series, OTT, Voice Ads, etc." }
+                }
+              },
+              "examples": {
+                "basic": {
+                  "summary": "Basic (name/niche/city)",
+                  "value": { "name": "Rahul Kumar", "niche": "Fitness", "city": "Hyderabad" }
+                },
+                "advanced": {
+                  "summary": "Advanced (brief + platforms + metrics)",
+                  "value": {
+                    "name": "Rahul Kumar",
+                    "niche": "Fitness",
+                    "city": "Hyderabad",
+                    "platforms": ["Instagram", "YouTube"],
+                    "contentCategory": "Fitness & Lifestyle",
+                    "languages": ["Telugu", "Hindi", "English"],
+                    "targetRegion": "Telangana and India",
+                    "followers": { "instagram": 12500, "youtube": 8400, "engagementRate": 2.1 },
+                    "avgViews": { "instagram": 45000, "youtube": 120000 },
+                    "pastBrands": ["Brand A", "Brand B"],
+                    "uniqueStrength": "High retention, story-led reels, strong conversion for local brands",
+                    "collaborationTypes": ["Reels", "Shorts", "Story", "Product Review", "Event Appearance"],
+                    "brief": "Fitness and lifestyle creator focusing on practical routines, transformation stories, and premium brand integrations."
+                  }
                 }
               }
             }
@@ -3459,10 +5122,147 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProfilePack"
+                },
+                "examples": {
+                  "advancedResponse": {
+                    "summary": "Advanced response includes brand-ready sections under jsonLd.kaburluProfile",
+                    "value": {
+                      "packId": "b2f9c0a9-7d9b-4f25-9f9e-2f0af6c9d2e1",
+                      "ai": true,
+                      "advanced": true,
+                      "shortBio": "Rahul Kumar | Fitness & Lifestyle creator in Hyderabad delivering brand-safe content with consistent reach.",
+                      "longBio": "Rahul Kumar is a Hyderabad-based Fitness & Lifestyle influencer creating story-led content across Instagram and YouTube. Known for structured routines, premium integrations, and strong audience trust.",
+                      "jsonLd": {
+                        "@context": "https://schema.org",
+                        "@type": "Person",
+                        "name": "Rahul Kumar",
+                        "description": "Rahul Kumar is a Hyderabad-based Fitness & Lifestyle influencer.",
+                        "address": { "addressLocality": "Hyderabad" },
+                        "kaburluProfile": {
+                          "headline": "Fitness & Lifestyle Creator Driving Trust, Reach, and Conversions",
+                          "about": "Rahul Kumar is a fitness and lifestyle creator based in Hyderabad focused on premium, brand-friendly storytelling.",
+                          "contentStyleAndExpertise": "Story-led reels, routine breakdowns, transformation narratives, and product integrations.",
+                          "audienceInsights": "Regional Telugu audiences with pan-India reach; high intent viewers and strong retention.",
+                          "collaborationOpportunities": ["Reels", "Shorts", "Story", "Product Review"],
+                          "whyBrandsShouldWorkWithThisInfluencer": [
+                            "Brand-safe premium positioning",
+                            "High audience trust and consistent reach",
+                            "Clear formats aligned to campaign goals",
+                            "Strong regional influence with scalable delivery",
+                            "Performance-oriented integrations"
+                          ],
+                          "pastWorkAndBrandReadiness": "Campaign-ready with professional delivery and clear content formats.",
+                          "platformSummary": {
+                            "rows": [
+                              { "platform": "Instagram", "followers": "12500", "avgReach": "45000", "engagementType": "Reels, Story" },
+                              { "platform": "YouTube", "followers": "8400", "avgReach": "120000", "engagementType": "Shorts, Video" }
+                            ]
+                          },
+                          "badgeLevel": "Pro",
+                          "callToActionForBrands": "Partner with Rahul Kumar for premium fitness campaigns with high trust and measurable outcomes."
+                        }
+                      }
+                    }
+                  }
                 }
               }
             }
           }
+        }
+      }
+    },
+    "/api/profile-builder/generate-from-me": {
+      "post": {
+        "tags": [
+          "Profile Builder"
+        ],
+        "summary": "Generate profile pack from my profile",
+        "description": "Best for frontend: backend auto-fills followers/socialLinks/platforms from the authenticated influencer profile. Frontend can send only brief/collaborationTypes and optional overrides. Frontend: read rich generated sections from response.jsonLd.kaburluProfile.",
+        "security": [
+          { "bearerAuth": [] }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "brief": { "type": "string", "description": "1–3 lines about the influencer (tone, positioning, category)." },
+                  "uniqueStrength": { "type": "string" },
+                  "collaborationTypes": { "type": "array", "items": { "type": "string" } },
+                  "pastBrands": { "type": "array", "items": { "type": "string" } },
+                  "avgViews": { "type": "object", "additionalProperties": { "type": "number" } },
+                  "languages": { "type": "array", "items": { "type": "string" } },
+                  "targetRegion": { "type": "string" },
+
+                  "name": { "type": "string", "description": "Optional override; default uses User.name." },
+                  "niche": { "type": "string", "description": "Optional override." },
+                  "city": { "type": "string", "description": "Optional; if not provided and not stored, city may be blank." },
+                  "contentCategory": { "type": "string" },
+                  "platforms": { "type": "array", "items": { "type": "string" }, "description": "Optional override; otherwise inferred from stored socialLinks." }
+                }
+              },
+              "examples": {
+                "minimal": {
+                  "summary": "Minimal (frontend sends only brief)",
+                  "value": {
+                    "brief": "Actor and influencer creating premium entertainment and lifestyle content for Telugu audiences. Brand-safe storytelling and high-quality on-camera performance."
+                  }
+                },
+                "full": {
+                  "summary": "Full (frontend adds collaboration types + metrics)",
+                  "value": {
+                    "brief": "Actor and influencer creating premium entertainment and lifestyle content for Telugu audiences. Brand-safe storytelling and high-quality on-camera performance.",
+                    "uniqueStrength": "Strong on-camera presence, high retention reels, premium brand integration",
+                    "collaborationTypes": ["Reels", "Shorts", "Story", "Brand Promotion", "Event Appearance", "Podcast / Interview"],
+                    "pastBrands": ["Brand A", "Brand B"],
+                    "avgViews": { "instagram": 45000, "youtube": 120000 },
+                    "languages": ["Telugu", "English"],
+                    "targetRegion": "Telugu audience (TG/AP) and India",
+                    "city": "Hyderabad"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ProfilePack" },
+                "examples": {
+                  "minimalResponse": {
+                    "summary": "Minimal request still returns full kaburluProfile sections",
+                    "value": {
+                      "packId": "3f3c2f0c-9c63-4f77-9c10-3c1f0d0d7a11",
+                      "ai": true,
+                      "advanced": true,
+                      "shortBio": "Hrushitha | Actor and influencer creating premium entertainment and lifestyle content for Telugu audiences.",
+                      "longBio": "Hrushitha is an actor and influencer focused on brand-safe entertainment and lifestyle storytelling. With strong on-camera performance and premium positioning, she collaborates with brands across fashion, beauty, lifestyle, and entertainment promotions.",
+                      "jsonLd": {
+                        "@context": "https://schema.org",
+                        "@type": "Person",
+                        "name": "Hrushitha",
+                        "description": "Hrushitha is an actor and influencer creating premium entertainment and lifestyle content.",
+                        "kaburluProfile": {
+                          "headline": "Actor & Influencer for Premium Entertainment Promotions",
+                          "about": "Hrushitha delivers brand-safe entertainment and lifestyle content with premium on-camera performance and strong regional relevance.",
+                          "collaborationOpportunities": ["Reels", "Shorts", "Story", "Brand Promotion", "Event Appearance"],
+                          "badgeLevel": "Ready",
+                          "callToActionForBrands": "Book Hrushitha for premium entertainment and lifestyle campaigns focused on trust and recall."
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "description": "Unauthorized" },
+          "404": { "description": "Influencer not found" }
         }
       }
     },
@@ -3489,6 +5289,7 @@
           "Profile Builder"
         ],
         "summary": "Add photo URL to profile pack (SEO)",
+        "description": "Adds one or more photo URLs to a profile pack and stores basic SEO metadata. If WhatsApp is configured, a template notification may be sent to the influencer (best-effort; does not affect the API response).",
         "security": [ { "bearerAuth": [] } ],
         "parameters": [ { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } } ],
         "requestBody": {
@@ -5079,6 +6880,303 @@
       }
     },
     "schemas": {
+      "PhotoshootRequest": {
+        "type": "object",
+        "properties": {
+          "ulid": { "type": "string" },
+          "status": { "type": "string", "enum": ["pending", "approved", "scheduled", "rejected"] },
+          "details": { "type": "object", "additionalProperties": true },
+          "location": { "type": "object", "nullable": true, "additionalProperties": true },
+          "requestedTimezone": { "type": "string", "nullable": true },
+          "requestedStartAt": { "type": "string", "nullable": true, "description": "ISO 8601", "format": "date-time" },
+          "requestedEndAt": { "type": "string", "nullable": true, "description": "ISO 8601", "format": "date-time" },
+          "scheduledTimezone": { "type": "string", "nullable": true },
+          "scheduledStartAt": { "type": "string", "nullable": true, "description": "ISO 8601", "format": "date-time" },
+          "scheduledEndAt": { "type": "string", "nullable": true, "description": "ISO 8601", "format": "date-time" },
+          "rejectReason": { "type": "string", "nullable": true },
+          "adminNotes": { "type": "string", "nullable": true },
+          "approvedByUserId": { "type": "integer", "nullable": true },
+          "approvedAt": { "type": "string", "nullable": true, "format": "date-time" },
+          "scheduledByUserId": { "type": "integer", "nullable": true },
+          "scheduledAt": { "type": "string", "nullable": true, "format": "date-time" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        },
+        "required": [
+          "ulid",
+          "status",
+          "details",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+
+      "InfluencerPhotoshootRequest": {
+        "type": "object",
+        "properties": {
+          "ulid": { "type": "string" },
+          "status": { "type": "string", "enum": ["pending", "approved", "scheduled", "rejected"] },
+          "details": { "type": "object", "additionalProperties": true },
+          "requestedStartAt": { "type": "string", "nullable": true, "format": "date-time" },
+          "requestedEndAt": { "type": "string", "nullable": true, "format": "date-time" },
+          "requestedTimezone": { "type": "string", "nullable": true },
+          "scheduledStartAt": { "type": "string", "nullable": true, "format": "date-time" },
+          "scheduledEndAt": { "type": "string", "nullable": true, "format": "date-time" },
+          "scheduledTimezone": { "type": "string", "nullable": true },
+          "location": { "type": "object", "nullable": true, "additionalProperties": true },
+          "rejectReason": { "type": "string", "nullable": true },
+          "adminNotes": { "type": "string", "nullable": true },
+          "approvedAt": { "type": "string", "nullable": true, "format": "date-time" },
+          "scheduledAt": { "type": "string", "nullable": true, "format": "date-time" },
+          "createdAt": { "type": "string", "nullable": true, "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["ulid", "status", "details", "updatedAt"]
+      },
+
+      "InfluencerPhotoshootRequestCreate": {
+        "type": "object",
+        "description": "Questionnaire + consent payload. Must include consent.termsAccepted=true and consent.publicDisplayConsent=true.",
+        "properties": {
+          "influencerAppointmentDetails": {
+            "type": "object",
+            "properties": {
+              "personal": {
+                "type": "object",
+                "properties": {
+                  "gender": { "type": "string", "enum": ["male", "female", "other"] },
+                  "bodyType": { "type": "string", "enum": ["Slim", "Athletic", "Average", "Curvy", "Plus Size"] },
+                  "skinTone": { "type": "string", "enum": ["Very Fair", "Fair", "Wheatish", "Medium", "Dusky", "Dark"] },
+                  "fullName": { "type": "string" },
+                  "displayName": { "type": "string" },
+                  "city": { "type": "string" }
+                }
+              },
+              "bodyMeasurements": {
+                "type": "object",
+                "properties": {
+                  "heightCm": { "type": "number" },
+                  "weightKg": { "type": "number", "nullable": true },
+                  "shoeSize": { "type": "number" },
+                  "chestBustCm": { "type": "number", "nullable": true },
+                  "waistCm": { "type": "number", "nullable": true },
+                  "hipCm": { "type": "number", "nullable": true },
+                  "shoulderWidthCm": { "type": "number", "nullable": true }
+                }
+              },
+              "dressDetails": {
+                "type": "object",
+                "properties": {
+                  "topSize": { "type": "string", "enum": ["XS", "S", "M", "L", "XL", "XXL"] },
+                  "bottomSize": { "type": "string", "enum": ["XS", "S", "M", "L", "XL", "XXL"] },
+                  "dressSize": { "type": "string", "enum": ["XS", "S", "M", "L", "XL", "XXL"] },
+                  "preferredFit": { "type": "string", "enum": ["Slim", "Regular", "Loose"] },
+                  "preferredDressingStyle": {
+                    "type": "array",
+                    "items": { "type": "string", "enum": ["Traditional", "Western", "Casual", "Formal", "Ethnic Modern"] }
+                  },
+                  "traditionalWearType": {
+                    "type": "array",
+                    "items": { "type": "string", "enum": ["Saree", "Kurta", "Lehenga", "Dhoti"] },
+                    "nullable": true
+                  },
+                  "westernWearType": {
+                    "type": "array",
+                    "items": { "type": "string", "enum": ["Jeans & Top", "Dress / Gown", "Suit / Blazer"] },
+                    "nullable": true
+                  },
+                  "preferredOutfitColors": { "type": "array", "items": { "type": "string" } }
+                }
+              },
+              "shootPreferences": {
+                "type": "object",
+                "properties": {
+                  "shootStyle": {
+                    "type": "array",
+                    "items": { "type": "string", "enum": ["Professional", "Lifestyle", "Cinematic", "Casual"] }
+                  },
+                  "poseComfortLevel": { "type": "string", "enum": ["Normal", "Confident", "Expressive"] },
+                  "boldnessLevel": { "type": "string", "enum": ["Normal", "Semi-Bold", "Bold"] },
+                  "sleevelessAllowed": { "type": "boolean" },
+                  "cameraFacingComfort": { "type": "boolean" },
+                  "shootType": { "type": "array", "items": { "type": "string" }, "nullable": true }
+                }
+              },
+              "stylingPermissions": {
+                "type": "object",
+                "properties": {
+                  "makeupPreference": { "type": "string", "enum": ["Natural", "Glam", "Heavy"] },
+                  "accessoriesAllowed": { "type": "boolean" }
+                }
+              },
+              "editingAndUsage": {
+                "type": "object",
+                "properties": {
+                  "usagePermission": {
+                    "type": "array",
+                    "items": { "type": "string", "enum": ["Website", "Ads", "Social Media", "InfluKaburlu Website", "Ads & Promotions", "SEO & Google Indexing"] }
+                  },
+                  "photoshopBrandingAllowed": { "type": "boolean" }
+                }
+              },
+              "consent": {
+                "type": "object",
+                "properties": {
+                  "publicDisplayConsent": { "type": "boolean" },
+                  "termsAccepted": { "type": "boolean" },
+                  "date": { "type": "string", "nullable": true }
+                }
+              }
+            },
+            "required": ["personal", "bodyMeasurements", "dressDetails", "shootPreferences", "stylingPermissions", "editingAndUsage", "consent"],
+            "additionalProperties": true
+          }
+        },
+        "required": ["influencerAppointmentDetails"],
+        "additionalProperties": true
+      },
+      "InfluencerPhotoshootRequestCreateResponse": {
+        "type": "object",
+        "properties": {
+          "ok": { "type": "boolean" },
+          "request": { "$ref": "#/components/schemas/InfluencerPhotoshootRequest" }
+        },
+        "required": ["ok", "request"]
+      },
+      "InfluencerPhotoshootRequestGetResponse": {
+        "type": "object",
+        "properties": {
+          "ok": { "type": "boolean" },
+          "request": { "$ref": "#/components/schemas/InfluencerPhotoshootRequest" }
+        },
+        "required": ["ok", "request"]
+      },
+      "InfluencerPhotoshootRequestListItem": {
+        "type": "object",
+        "properties": {
+          "ulid": { "type": "string" },
+          "status": { "type": "string" },
+          "requestedStartAt": { "type": "string", "nullable": true, "format": "date-time" },
+          "requestedEndAt": { "type": "string", "nullable": true, "format": "date-time" },
+          "requestedTimezone": { "type": "string", "nullable": true },
+          "scheduledStartAt": { "type": "string", "nullable": true, "format": "date-time" },
+          "scheduledEndAt": { "type": "string", "nullable": true, "format": "date-time" },
+          "scheduledTimezone": { "type": "string", "nullable": true },
+          "location": { "type": "object", "nullable": true, "additionalProperties": true },
+          "rejectReason": { "type": "string", "nullable": true },
+          "adminNotes": { "type": "string", "nullable": true },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["ulid", "status", "createdAt", "updatedAt"]
+      },
+      "InfluencerPhotoshootRequestListResponse": {
+        "type": "object",
+        "properties": {
+          "total": { "type": "integer" },
+          "limit": { "type": "integer" },
+          "offset": { "type": "integer" },
+          "items": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/InfluencerPhotoshootRequestListItem" }
+          }
+        },
+        "required": ["total", "limit", "offset", "items"]
+      },
+      "InfluencerPhotoshootBookRequest": {
+        "type": "object",
+        "description": "Booking requires questionnaire answers + consent. If you already submitted them in the request (create/update), you can omit details here. Otherwise, include the same questionnaire payload in 'details'.",
+        "properties": {
+          "requestedTimezone": { "type": "string", "nullable": true },
+          "requestedStartAt": { "type": "string", "format": "date-time" },
+          "requestedEndAt": { "type": "string", "format": "date-time" },
+          "location": { "type": "object", "nullable": true, "additionalProperties": true },
+          "details": { "$ref": "#/components/schemas/InfluencerPhotoshootRequestCreate" }
+        },
+        "required": ["requestedStartAt", "requestedEndAt"]
+      },
+
+      "SuperadminPhotoshootRequestListResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "total": { "type": "integer" },
+          "limit": { "type": "integer" },
+          "offset": { "type": "integer" },
+          "items": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/SuperadminPhotoshootRequestListItem" }
+          }
+        },
+        "required": ["total", "limit", "offset", "items"]
+      },
+      "SuperadminPhotoshootInfluencerSummary": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "ulid": { "type": "string" },
+          "handle": { "type": "string", "nullable": true },
+          "user": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "integer" },
+              "name": { "type": "string", "nullable": true },
+              "phone": { "type": "string", "nullable": true },
+              "email": { "type": "string", "nullable": true }
+            }
+          }
+        }
+      },
+      "SuperadminPhotoshootRequestListItem": {
+        "type": "object",
+        "properties": {
+          "ulid": { "type": "string" },
+          "status": { "type": "string" },
+          "influencer": { "$ref": "#/components/schemas/SuperadminPhotoshootInfluencerSummary", "nullable": true },
+          "requestedStartAt": { "type": "string", "nullable": true, "format": "date-time" },
+          "requestedEndAt": { "type": "string", "nullable": true, "format": "date-time" },
+          "scheduledStartAt": { "type": "string", "nullable": true, "format": "date-time" },
+          "scheduledEndAt": { "type": "string", "nullable": true, "format": "date-time" },
+          "rejectReason": { "type": "string", "nullable": true },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["ulid", "status", "createdAt", "updatedAt"]
+      },
+      "SuperadminPhotoshootRequestGetResponse": {
+        "type": "object",
+        "properties": {
+          "ok": { "type": "boolean" },
+          "request": { "type": "object", "additionalProperties": true }
+        },
+        "required": ["ok", "request"]
+      },
+      "SuperadminPhotoshootRequestStatusResponse": {
+        "type": "object",
+        "properties": {
+          "ok": { "type": "boolean" },
+          "request": { "type": "object", "additionalProperties": true }
+        },
+        "required": ["ok", "request"]
+      },
+      "SuperadminPhotoshootRejectRequest": {
+        "type": "object",
+        "properties": {
+          "reason": { "type": "string", "minLength": 1 }
+        },
+        "required": ["reason"]
+      },
+      "SuperadminPhotoshootScheduleRequest": {
+        "type": "object",
+        "properties": {
+          "scheduledTimezone": { "type": "string" },
+          "scheduledStartAt": { "type": "string", "format": "date-time" },
+          "scheduledEndAt": { "type": "string", "format": "date-time" },
+          "location": { "type": "object", "nullable": true, "additionalProperties": true },
+          "adminNotes": { "type": "string", "nullable": true }
+        },
+        "required": ["scheduledTimezone", "scheduledStartAt", "scheduledEndAt"]
+      },
       "SuperadminDashboardResponse": {
         "type": "object",
         "properties": {
@@ -5204,6 +7302,270 @@
             "createdAt": "2025-12-18T10:00:00.000Z",
             "updatedAt": "2025-12-18T12:34:56.000Z"
           }
+        }
+      },
+      "SuperadminCreatePrUserRequest": {
+        "type": "object",
+        "required": ["phone", "password"],
+        "properties": {
+          "name": { "type": "string" },
+          "phone": { "type": "string" },
+          "email": { "type": ["string", "null"] },
+          "password": { "type": "string" }
+        }
+      },
+      "SuperadminCreatePrUserResponse": {
+        "type": "object",
+        "properties": {
+          "ok": { "type": "boolean" },
+          "pr": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "integer" },
+              "ulid": { "type": ["string", "null"] },
+              "name": { "type": ["string", "null"] },
+              "phone": { "type": ["string", "null"] },
+              "email": { "type": ["string", "null"] }
+            }
+          }
+        }
+      },
+      "SuperadminAssignPrToBrandRequest": {
+        "type": "object",
+        "properties": {
+          "prUserId": { "type": "integer" },
+          "prUserUlid": { "type": "string" },
+          "prPhone": { "type": "string" },
+          "isPrimary": { "type": "boolean", "default": true }
+        }
+      },
+      "SuperadminAssignPrToBrandResponse": {
+        "type": "object",
+        "properties": {
+          "ok": { "type": "boolean" },
+          "brand": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "integer" },
+              "ulid": { "type": "string" },
+              "companyName": { "type": ["string", "null"] }
+            }
+          },
+          "pr": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "integer" },
+              "ulid": { "type": ["string", "null"] },
+              "name": { "type": ["string", "null"] },
+              "phone": { "type": ["string", "null"] }
+            }
+          },
+          "membership": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "integer" },
+              "memberRole": { "type": "string" },
+              "isPrimary": { "type": "boolean" }
+            }
+          }
+        }
+      },
+      "SuperadminPrCommissionListResponse": {
+        "type": "object",
+        "properties": {
+          "total": { "type": "integer" },
+          "limit": { "type": "integer" },
+          "offset": { "type": "integer" },
+          "items": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/SuperadminPrCommissionItem" }
+          }
+        }
+      },
+      "SuperadminPrCommissionItem": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "amount": { "type": "number" },
+          "status": { "type": "string" },
+          "brandId": { "type": "integer" },
+          "adId": { "type": "integer", "nullable": true },
+          "applicationId": { "type": "integer", "nullable": true },
+          "payoutId": { "type": "integer", "nullable": true },
+          "prUser": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "id": { "type": "integer" },
+              "ulid": { "type": ["string", "null"] },
+              "name": { "type": ["string", "null"] },
+              "phone": { "type": ["string", "null"] },
+              "email": { "type": ["string", "null"] }
+            }
+          },
+          "meta": { "type": "object" },
+          "createdAt": { "type": "string" },
+          "updatedAt": { "type": "string" }
+        }
+      },
+      "SuperadminPrCommissionMarkPaidResponse": {
+        "type": "object",
+        "properties": {
+          "ok": { "type": "boolean" },
+          "commission": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "integer" },
+              "amount": { "type": "number" },
+              "status": { "type": "string" },
+              "prUserId": { "type": "integer" },
+              "brandId": { "type": "integer" },
+              "adId": { "type": "integer", "nullable": true },
+              "applicationId": { "type": "integer", "nullable": true },
+              "payoutId": { "type": "integer", "nullable": true },
+              "meta": { "type": "object" },
+              "createdAt": { "type": "string" },
+              "updatedAt": { "type": "string" }
+            }
+          }
+        }
+      },
+      "PrBrandListResponse": {
+        "type": "object",
+        "properties": {
+          "total": { "type": "integer" },
+          "items": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/PrBrandItem" }
+          }
+        }
+      },
+      "PrBrandItem": {
+        "type": "object",
+        "properties": {
+          "membership": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "integer" },
+              "memberRole": { "type": "string" },
+              "isPrimary": { "type": "boolean" },
+              "createdAt": { "type": "string" }
+            }
+          },
+          "brand": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "integer" },
+              "ulid": { "type": "string" },
+              "companyName": { "type": ["string", "null"] },
+              "name": { "type": ["string", "null"] }
+            }
+          }
+        }
+      },
+      "PrBrandAdsListResponse": {
+        "type": "object",
+        "properties": {
+          "brand": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "integer" },
+              "ulid": { "type": "string" },
+              "companyName": { "type": ["string", "null"] }
+            }
+          },
+          "total": { "type": "integer" },
+          "limit": { "type": "integer" },
+          "offset": { "type": "integer" },
+          "items": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/PrAdSummary" }
+          }
+        }
+      },
+      "PrAdSummary": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "idUlid": { "type": "string" },
+          "brandId": { "type": "integer" },
+          "title": { "type": ["string", "null"] },
+          "description": { "type": ["string", "null"] },
+          "language": { "type": ["string", "null"] },
+          "targetStates": { "type": "array", "items": { "type": "string" } },
+          "budget": { "type": ["number", "null"] },
+          "payPerInfluencer": { "type": ["number", "null"] },
+          "categories": { "type": "array", "items": { "type": "string" } },
+          "deliverables": { "type": "array", "items": { "type": "string" } },
+          "briefUrl": { "type": ["string", "null"] },
+          "budgetPaid": { "type": "boolean" },
+          "status": { "type": ["string", "null"] },
+          "createdAt": { "type": "string" },
+          "updatedAt": { "type": "string" }
+        }
+      },
+      "PrAdGetResponse": {
+        "type": "object",
+        "description": "Full ad record (as stored) plus idUlid and brand summary.",
+        "properties": {
+          "id": { "type": "integer" },
+          "idUlid": { "type": "string" },
+          "brandId": { "type": "integer" },
+          "title": { "type": ["string", "null"] },
+          "description": { "type": ["string", "null"] },
+          "language": { "type": ["string", "null"] },
+          "targetStates": { "type": "array", "items": { "type": "string" } },
+          "payPerInfluencer": { "type": ["number", "null"] },
+          "budget": { "type": ["number", "null"] },
+          "categories": { "type": "array", "items": { "type": "string" } },
+          "deliverables": { "type": "array", "items": { "type": "string" } },
+          "briefUrl": { "type": ["string", "null"] },
+          "budgetPaid": { "type": "boolean" },
+          "status": { "type": ["string", "null"] },
+          "brand": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "integer" },
+              "ulid": { "type": "string" },
+              "companyName": { "type": ["string", "null"] }
+            }
+          }
+        }
+      },
+      "PrCommissionListResponse": {
+        "type": "object",
+        "properties": {
+          "total": { "type": "integer" },
+          "limit": { "type": "integer" },
+          "offset": { "type": "integer" },
+          "items": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/PrCommissionItem" }
+          }
+        }
+      },
+      "PrCommissionItem": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "amount": { "type": "number" },
+          "status": { "type": "string" },
+          "brandId": { "type": "integer" },
+          "brand": {
+            "type": ["object", "null"],
+            "properties": {
+              "id": { "type": "integer" },
+              "ulid": { "type": "string" },
+              "companyName": { "type": ["string", "null"] },
+              "name": { "type": ["string", "null"] }
+            }
+          },
+          "adId": { "type": ["integer", "null"] },
+          "applicationId": { "type": ["integer", "null"] },
+          "payoutId": { "type": ["integer", "null"] },
+          "meta": { "type": "object" },
+          "createdAt": { "type": "string" },
+          "updatedAt": { "type": "string" }
         }
       },
       "ErrorResponse": {
@@ -5693,7 +8055,13 @@
         "type": "object",
         "required": ["phone"],
         "properties": {
-          "phone": { "type": "string" }
+          "phone": { "type": "string", "description": "WhatsApp number in international format. Accepts digits-only (e.g., 919000000000) or E.164 (+919000000000)." },
+          "email": { "type": "string", "description": "Optional email used only for certain WhatsApp templates (e.g., Gmail linking)." },
+          "purpose": {
+            "type": "string",
+            "description": "Optional purpose to select a specific WhatsApp template.",
+            "enum": ["google_link", "generic"]
+          }
         }
       },
       "AuthOtpResponse": {
@@ -5950,6 +8318,23 @@
           "payPerInfluencer": {
             "type": "number"
           },
+          "budget": {
+            "type": "number"
+          },
+          "categories": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "deliverables": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "briefUrl": {
+            "type": ["string", "null"]
+          },
+          "budgetPaid": {
+            "type": "boolean"
+          },
           "status": {
             "type": "string"
           }
@@ -5962,6 +8347,10 @@
           "description"
         ],
         "properties": {
+          "brandUlid": {
+            "type": "string",
+            "description": "Required for PR users (brand-scoped). Brand users can omit this and the brand is inferred from ownership."
+          },
           "title": {
             "type": "string"
           },
@@ -5979,6 +8368,17 @@
           },
           "payPerInfluencer": {
             "type": "number"
+          },
+          "budget": {
+            "type": "number"
+          },
+          "categories": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "deliverables": {
+            "type": "array",
+            "items": { "type": "string" }
           }
         }
       },
@@ -6002,6 +8402,20 @@
           },
           "payPerInfluencer": {
             "type": "number"
+          },
+          "budget": {
+            "type": "number"
+          },
+          "categories": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "deliverables": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "briefUrl": {
+            "type": ["string", "null"]
           },
           "status": {
             "type": "string"
@@ -6170,9 +8584,14 @@
           "handle": {
             "type": "string"
           },
+          "bio": {
+            "type": "string"
+          },
           "profilePicUrl": {
             "type": "string"
           },
+          "socialLinks": { "$ref": "#/components/schemas/InfluencerSocialLinks" },
+          "followers": { "$ref": "#/components/schemas/InfluencerFollowers" },
           "verificationStatus": {
             "type": "string"
           },
@@ -6193,6 +8612,8 @@
           "bio": {
             "type": "string"
           },
+          "socialLinks": { "$ref": "#/components/schemas/InfluencerSocialLinks" },
+          "followers": { "$ref": "#/components/schemas/InfluencerFollowers" },
           "countryId": {
             "type": "integer"
           },
@@ -6217,6 +8638,70 @@
           "postalCode": {
             "type": "string"
           }
+        }
+      },
+      "InfluencerFollowers": {
+        "type": "object",
+        "description": "Platform-wise follower counts and metrics. Known keys are documented as properties; you may also send custom numeric metrics.",
+        "properties": {
+          "instagram": { "type": "number", "description": "Instagram followers" },
+          "youtube": { "type": "number", "description": "YouTube subscribers" },
+          "tiktok": { "type": "number", "description": "TikTok followers" },
+          "facebook": { "type": "number", "description": "Facebook followers" },
+          "x": { "type": "number", "description": "X (Twitter) followers" },
+          "snapchat": { "type": "number", "description": "Snapchat followers" },
+          "linkedin": { "type": "number", "description": "LinkedIn followers" },
+          "pinterest": { "type": "number", "description": "Pinterest followers" },
+          "threads": { "type": "number", "description": "Threads followers" },
+          "telegram": { "type": "number", "description": "Telegram subscribers" },
+          "websiteMonthlyVisitors": { "type": "number", "description": "Website monthly visitors (optional)" },
+          "engagementRate": { "type": "number", "description": "Engagement rate percentage (optional)" }
+        },
+        "additionalProperties": { "type": "number" },
+        "example": {
+          "instagram": 12500,
+          "youtube": 8400,
+          "tiktok": 30200,
+          "facebook": 4100,
+          "x": 9200,
+          "snapchat": 15000,
+          "linkedin": 800,
+          "pinterest": 1200,
+          "threads": 5000,
+          "telegram": 3000,
+          "websiteMonthlyVisitors": 45000,
+          "engagementRate": 2.1
+        }
+      },
+      "InfluencerSocialLinks": {
+        "type": "object",
+        "description": "Platform profile links. Known keys are documented as properties; you may also send custom string keys.",
+        "properties": {
+          "instagram": { "type": "string", "description": "Instagram profile URL" },
+          "youtube": { "type": "string", "description": "YouTube channel/profile URL" },
+          "tiktok": { "type": "string", "description": "TikTok profile URL" },
+          "facebook": { "type": "string", "description": "Facebook profile/page URL" },
+          "x": { "type": "string", "description": "X (Twitter) profile URL" },
+          "snapchat": { "type": "string", "description": "Snapchat profile URL" },
+          "linkedin": { "type": "string", "description": "LinkedIn profile URL" },
+          "pinterest": { "type": "string", "description": "Pinterest profile URL" },
+          "threads": { "type": "string", "description": "Threads profile URL" },
+          "telegram": { "type": "string", "description": "Telegram channel/profile URL" },
+          "website": { "type": "string", "description": "Personal website URL" }
+        },
+        "additionalProperties": { "type": "string" },
+        "example": {
+          "instagram": "https://instagram.com/rahul_fitlife",
+          "youtube": "https://youtube.com/@rahulfitlife",
+          "tiktok": "https://tiktok.com/@rahulfitlife",
+          "facebook": "https://facebook.com/rahul.fitlife",
+          "x": "https://x.com/rahul_fitlife",
+          "snapchat": "https://www.snapchat.com/add/rahulfitlife",
+          "linkedin": "https://www.linkedin.com/in/rahul-fitlife",
+          "pinterest": "https://www.pinterest.com/rahulfitlife",
+          "threads": "https://www.threads.net/@rahul_fitlife",
+          "telegram": "https://t.me/rahulfitlife",
+          "website": "https://rahulfitlife.com"
         }
       },
       "InfluencerPricing": {
@@ -6320,6 +8805,30 @@
           }
         },
         "required": ["total", "limit", "offset", "items"]
+      },
+      "InfluencerReferralInviteRequest": {
+        "type": "object",
+        "required": ["phone"],
+        "properties": {
+          "phone": {
+            "type": "string",
+            "description": "Receiver WhatsApp number in international format (digits-only or E.164)."
+          },
+          "receiverName": {
+            "type": "string",
+            "description": "Optional receiver name used in the template body."
+          }
+        }
+      },
+      "InfluencerReferralInviteResponse": {
+        "type": "object",
+        "required": ["ok", "referralCode", "shareUrl", "whatsapp"],
+        "properties": {
+          "ok": { "type": "boolean" },
+          "referralCode": { "type": "string" },
+          "shareUrl": { "type": ["string", "null"], "description": "Frontend URL including the referral code (returned for client-side sharing)." },
+          "whatsapp": { "type": ["object", "null"], "description": "Raw WhatsApp Cloud API response." }
+        }
       },
       "ProfilePack": {
         "type": "object",

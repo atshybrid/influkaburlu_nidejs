@@ -1,10 +1,10 @@
 const router = require('express').Router();
 const ctrl = require('../controllers/adsController');
 const auth = require('../middleware/auth');
-router.post('/', auth(['brand']), ctrl.createAd);
+router.post('/', auth(['brand', 'pr']), ctrl.createAd);
 router.get('/', ctrl.listAds);
 router.post('/feed', ctrl.feed);
-router.put('/:id', auth(['brand']), ctrl.updateAd);
-router.post('/:id/payment/initiate', auth(['brand']), ctrl.initiatePayment);
+router.put('/:id', auth(['brand', 'pr']), ctrl.updateAd);
+router.post('/:id/payment/initiate', auth(['brand', 'pr']), ctrl.initiatePayment);
 router.post('/payment/confirm', ctrl.confirmPayment);
 module.exports = router;

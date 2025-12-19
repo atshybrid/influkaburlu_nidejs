@@ -53,6 +53,9 @@ const ProfilePack = require('./profilePack')(sequelize, Sequelize.DataTypes);
 const LandingContent = require('./landingContent')(sequelize, Sequelize.DataTypes);
 const SeoPage = require('./seoPage')(sequelize, Sequelize.DataTypes);
 const ReferralCommission = require('./referralCommission')(sequelize, Sequelize.DataTypes);
+const BrandMember = require('./brandMember')(sequelize, Sequelize.DataTypes);
+const PrCommission = require('./prCommission')(sequelize, Sequelize.DataTypes);
+const PhotoshootRequest = require('./photoshootRequest')(sequelize, Sequelize.DataTypes);
 const { Country, State, District } = require('./location')(sequelize, Sequelize.DataTypes);
 const { Role, UserRole } = require('./role')(sequelize, Sequelize.DataTypes);
 
@@ -159,6 +162,69 @@ async function ensureInfluencerReferralColumns() {
 
 ensureInfluencerReferralColumns().catch(() => {});
 
+async function ensureInfluencerUlidColumn() {
+	const qi = sequelize.getQueryInterface();
+	const quoteIdent = (name) => '"' + String(name).replace(/"/g, '""') + '"';
+	let tableName = 'Influencers';
+	try {
+		await qi.describeTable('Influencers');
+	} catch (e) {
+		try {
+			await qi.describeTable('influencers');
+			tableName = 'influencers';
+		} catch (_) {
+			// keep default; later operations will just no-op/fail silently
+		}
+	}
+	const qTable = quoteIdent(tableName);
+	try {
+		await sequelize.query(`ALTER TABLE ${qTable} ADD COLUMN IF NOT EXISTS "ulid" VARCHAR(26)`);
+	} catch (e) {
+		try {
+			const table = await qi.describeTable(tableName);
+			if (!table.ulid) {
+				await qi.addColumn(tableName, 'ulid', { type: Sequelize.DataTypes.STRING(26), allowNull: true });
+			}
+		} catch (_) {}
+	}
+
+	// Backfill ULIDs for existing rows (best-effort, avoids breaking auth/session flows).
+	try {
+		const [rows] = await sequelize.query(`SELECT "id" FROM ${qTable} WHERE "ulid" IS NULL`);
+		if (Array.isArray(rows) && rows.length > 0) {
+			const { ulid } = require('ulid');
+			for (const r of rows) {
+				const influencerId = r.id;
+				if (!influencerId) continue;
+				let assigned = false;
+				for (let attempts = 0; attempts < 5 && !assigned; attempts++) {
+					const value = ulid();
+					try {
+						await sequelize.query(`UPDATE ${qTable} SET "ulid" = :ulid WHERE "id" = :id AND "ulid" IS NULL`, {
+							replacements: { ulid: value, id: influencerId }
+						});
+						assigned = true;
+					} catch (_) {
+						// retry on potential unique collisions
+					}
+				}
+			}
+		}
+	} catch (_) {}
+
+	// Unique index (allows multiple NULLs if any remain; safe to run repeatedly).
+	try {
+		const indexName = `${tableName}_ulid_unique`;
+		await sequelize.query(`CREATE UNIQUE INDEX IF NOT EXISTS ${quoteIdent(indexName)} ON ${qTable}("ulid") WHERE "ulid" IS NOT NULL`);
+	} catch (_) {}
+}
+
+// Exported so server can run this after DB connect (more reliable than one-time boot call).
+module.exports.ensureInfluencerUlidColumn = ensureInfluencerUlidColumn;
+
+// Best-effort early attempt (may fail if DB is not reachable yet).
+ensureInfluencerUlidColumn().catch(() => {});
+
 async function ensureReferralCommissionsTable() {
 	const qi = sequelize.getQueryInterface();
 	try {
@@ -182,6 +248,106 @@ async function ensureReferralCommissionsTable() {
 }
 
 ensureReferralCommissionsTable().catch(() => {});
+
+async function ensureBrandMembersTable() {
+	const qi = sequelize.getQueryInterface();
+	try {
+		await qi.describeTable('BrandMembers');
+	} catch (e) {
+		await qi.createTable('BrandMembers', {
+			id: { type: Sequelize.DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+			brandId: { type: Sequelize.DataTypes.INTEGER, allowNull: false },
+			userId: { type: Sequelize.DataTypes.INTEGER, allowNull: false },
+			memberRole: { type: Sequelize.DataTypes.STRING(32), allowNull: false, defaultValue: 'pr' },
+			isPrimary: { type: Sequelize.DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
+			createdByUserId: { type: Sequelize.DataTypes.INTEGER, allowNull: true },
+			meta: { type: Sequelize.DataTypes.JSONB, allowNull: false, defaultValue: {} },
+			createdAt: { type: Sequelize.DataTypes.DATE, allowNull: false, defaultValue: Sequelize.fn('NOW') },
+			updatedAt: { type: Sequelize.DataTypes.DATE, allowNull: false, defaultValue: Sequelize.fn('NOW') },
+		});
+		try {
+			await sequelize.query('CREATE UNIQUE INDEX IF NOT EXISTS "BrandMembers_brand_user_unique" ON "BrandMembers"("brandId", "userId")');
+		} catch (_) {}
+		try {
+			await sequelize.query('CREATE INDEX IF NOT EXISTS "BrandMembers_brandId_idx" ON "BrandMembers"("brandId")');
+		} catch (_) {}
+		try {
+			await sequelize.query('CREATE INDEX IF NOT EXISTS "BrandMembers_userId_idx" ON "BrandMembers"("userId")');
+		} catch (_) {}
+	}
+}
+
+ensureBrandMembersTable().catch(() => {});
+
+async function ensurePrCommissionsTable() {
+	const qi = sequelize.getQueryInterface();
+	try {
+		await qi.describeTable('PrCommissions');
+	} catch (e) {
+		await qi.createTable('PrCommissions', {
+			id: { type: Sequelize.DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+			prUserId: { type: Sequelize.DataTypes.INTEGER, allowNull: false },
+			brandId: { type: Sequelize.DataTypes.INTEGER, allowNull: false },
+			adId: { type: Sequelize.DataTypes.INTEGER, allowNull: true },
+			applicationId: { type: Sequelize.DataTypes.INTEGER, allowNull: true },
+			payoutId: { type: Sequelize.DataTypes.INTEGER, allowNull: true },
+			amount: { type: Sequelize.DataTypes.DECIMAL(12, 2), allowNull: false },
+			status: { type: Sequelize.DataTypes.STRING(32), allowNull: false, defaultValue: 'earned' },
+			meta: { type: Sequelize.DataTypes.JSONB, allowNull: false, defaultValue: {} },
+			createdAt: { type: Sequelize.DataTypes.DATE, allowNull: false, defaultValue: Sequelize.fn('NOW') },
+			updatedAt: { type: Sequelize.DataTypes.DATE, allowNull: false, defaultValue: Sequelize.fn('NOW') },
+		});
+		try {
+			await sequelize.query('CREATE UNIQUE INDEX IF NOT EXISTS "PrCommissions_pr_payout_unique" ON "PrCommissions"("prUserId", "payoutId")');
+		} catch (_) {}
+		try {
+			await sequelize.query('CREATE INDEX IF NOT EXISTS "PrCommissions_brandId_idx" ON "PrCommissions"("brandId")');
+		} catch (_) {}
+		try {
+			await sequelize.query('CREATE INDEX IF NOT EXISTS "PrCommissions_prUserId_idx" ON "PrCommissions"("prUserId")');
+		} catch (_) {}
+	}
+}
+
+ensurePrCommissionsTable().catch(() => {});
+
+async function ensurePhotoshootRequestsTable() {
+	const qi = sequelize.getQueryInterface();
+	try {
+		await qi.describeTable('PhotoshootRequests');
+	} catch (e) {
+		await qi.createTable('PhotoshootRequests', {
+			id: { type: Sequelize.DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+			ulid: { type: Sequelize.DataTypes.STRING(26), allowNull: false, unique: true },
+			influencerId: { type: Sequelize.DataTypes.INTEGER, allowNull: false },
+			status: { type: Sequelize.DataTypes.STRING(32), allowNull: false, defaultValue: 'pending' },
+			details: { type: Sequelize.DataTypes.JSONB, allowNull: false, defaultValue: {} },
+			requestedStartAt: { type: Sequelize.DataTypes.DATE, allowNull: true },
+			requestedEndAt: { type: Sequelize.DataTypes.DATE, allowNull: true },
+			requestedTimezone: { type: Sequelize.DataTypes.STRING(64), allowNull: true },
+			scheduledStartAt: { type: Sequelize.DataTypes.DATE, allowNull: true },
+			scheduledEndAt: { type: Sequelize.DataTypes.DATE, allowNull: true },
+			scheduledTimezone: { type: Sequelize.DataTypes.STRING(64), allowNull: true },
+			location: { type: Sequelize.DataTypes.JSONB, allowNull: false, defaultValue: {} },
+			rejectReason: { type: Sequelize.DataTypes.TEXT, allowNull: true },
+			adminNotes: { type: Sequelize.DataTypes.TEXT, allowNull: true },
+			approvedByUserId: { type: Sequelize.DataTypes.INTEGER, allowNull: true },
+			approvedAt: { type: Sequelize.DataTypes.DATE, allowNull: true },
+			scheduledByUserId: { type: Sequelize.DataTypes.INTEGER, allowNull: true },
+			scheduledAt: { type: Sequelize.DataTypes.DATE, allowNull: true },
+			createdAt: { type: Sequelize.DataTypes.DATE, allowNull: false, defaultValue: Sequelize.fn('NOW') },
+			updatedAt: { type: Sequelize.DataTypes.DATE, allowNull: false, defaultValue: Sequelize.fn('NOW') },
+		});
+		try {
+			await sequelize.query('CREATE INDEX IF NOT EXISTS "PhotoshootRequests_influencerId_idx" ON "PhotoshootRequests"("influencerId")');
+		} catch (_) {}
+		try {
+			await sequelize.query('CREATE INDEX IF NOT EXISTS "PhotoshootRequests_status_idx" ON "PhotoshootRequests"("status")');
+		} catch (_) {}
+	}
+}
+
+ensurePhotoshootRequestsTable().catch(() => {});
 
 async function ensureUserAuthColumns() {
 	const qi = sequelize.getQueryInterface();
@@ -363,6 +529,12 @@ Influencer.belongsTo(User, { foreignKey: 'userId' });
 User.hasOne(Brand, { foreignKey: 'userId' });
 Brand.belongsTo(User, { foreignKey: 'userId' });
 
+// Brand members (PR users are scoped to brands through this table)
+Brand.hasMany(BrandMember, { foreignKey: 'brandId' });
+BrandMember.belongsTo(Brand, { foreignKey: 'brandId' });
+User.hasMany(BrandMember, { foreignKey: 'userId' });
+BrandMember.belongsTo(User, { foreignKey: 'userId' });
+
 Brand.hasMany(Ad, { foreignKey: 'brandId' });
 Ad.belongsTo(Brand, { foreignKey: 'brandId' });
 
@@ -417,7 +589,13 @@ ProfilePack.belongsTo(Influencer, { foreignKey: 'influencerId' });
 Influencer.hasMany(ReferralCommission, { foreignKey: 'referrerInfluencerId' });
 ReferralCommission.belongsTo(Influencer, { foreignKey: 'referrerInfluencerId' });
 
-module.exports = { sequelize, User, Influencer, Brand, Ad, Application, Payout, OtpRequest, RefreshToken, Post, InfluencerAdMedia, InfluencerPricing, InfluencerKyc, InfluencerPaymentMethod, ProfilePack, LandingContent, SeoPage, ReferralCommission };
+// PR commissions associations
+User.hasMany(PrCommission, { foreignKey: 'prUserId' });
+PrCommission.belongsTo(User, { foreignKey: 'prUserId' });
+Brand.hasMany(PrCommission, { foreignKey: 'brandId' });
+PrCommission.belongsTo(Brand, { foreignKey: 'brandId' });
+
+module.exports = { sequelize, User, Influencer, Brand, Ad, Application, Payout, OtpRequest, RefreshToken, Post, InfluencerAdMedia, InfluencerPricing, InfluencerKyc, InfluencerPaymentMethod, ProfilePack, LandingContent, SeoPage, ReferralCommission, BrandMember, PrCommission, PhotoshootRequest, ensureUserAuthColumns, ensureInfluencerUlidColumn };
 module.exports.Language = Language;
 module.exports.Category = Category;
 module.exports.InfluencerCategory = InfluencerCategory;

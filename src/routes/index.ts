@@ -13,6 +13,7 @@ const uploads = require('./uploads');
 const discovery = require('./discovery');
 const categories = require('./categories');
 const seo = require('./seo');
+const pr = require('./pr');
 const bunnyCtrl = require('../controllers/bunnyController');
 const kycCtrl = require('../controllers/kycController');
 const payCtrl = require('../controllers/paymentController');
@@ -21,6 +22,7 @@ const influencerCtrl = require('../controllers/influencerController');
 const landingCtrl = require('../controllers/landingController');
 const superadminCtrl = require('../controllers/superadminController');
 const seoCtrl = require('../controllers/seoController');
+const photoshootCtrl = require('../controllers/photoshootController');
 
 router.use('/auth', auth);
 router.use('/ads', ads);
@@ -35,6 +37,7 @@ router.use('/uploads', uploads);
 router.use('/discovery', discovery);
 router.use('/categories', categories);
 router.use('/seo', seo);
+router.use('/pr', pr);
 
 // Public landing page
 router.get('/public/influencers', influencerCtrl.publicLandingList);
@@ -67,9 +70,24 @@ router.put('/admin/payments/:id/status', requireAuth(['admin', 'superadmin']), p
 // Superadmin dashboard
 router.get('/superadmin/dashboard', requireAuth(['superadmin']), superadminCtrl.dashboard);
 
+// Superadmin: PR management
+router.post('/superadmin/prs', requireAuth(['superadmin']), superadminCtrl.createPrUser);
+router.post('/superadmin/brands/:brandUlid/pr', requireAuth(['superadmin']), superadminCtrl.assignPrToBrand);
+
+// Superadmin: PR commission admin
+router.get('/superadmin/pr-commissions', requireAuth(['superadmin']), superadminCtrl.listPrCommissions);
+router.put('/superadmin/pr-commissions/:id/paid', requireAuth(['superadmin']), superadminCtrl.markPrCommissionPaid);
+
 // Superadmin: referral commission admin
 router.get('/superadmin/referral-commissions', requireAuth(['superadmin']), superadminCtrl.listReferralCommissions);
 router.put('/superadmin/referral-commissions/:id/paid', requireAuth(['superadmin']), superadminCtrl.markReferralCommissionPaid);
+
+// Superadmin: photoshoot requests
+router.get('/superadmin/photoshoots/requests', requireAuth(['superadmin']), photoshootCtrl.adminList);
+router.get('/superadmin/photoshoots/requests/:ulid', requireAuth(['superadmin']), photoshootCtrl.adminGet);
+router.put('/superadmin/photoshoots/requests/:ulid/approve', requireAuth(['superadmin']), photoshootCtrl.adminApprove);
+router.put('/superadmin/photoshoots/requests/:ulid/reject', requireAuth(['superadmin']), photoshootCtrl.adminReject);
+router.put('/superadmin/photoshoots/requests/:ulid/schedule', requireAuth(['superadmin']), photoshootCtrl.adminSchedule);
 
 // Admin: SEO management
 router.put('/admin/seo/influencer/:id', requireAuth(['admin', 'superadmin']), seoCtrl.adminUpsertInfluencerSeo);

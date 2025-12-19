@@ -18,6 +18,7 @@ router.get('/dashboard', auth(['influencer']), ctrl.dashboard);
 router.get('/me/referral', auth(['influencer']), ctrl.getMyReferral);
 router.post('/me/referral/apply', auth(['influencer']), ctrl.applyReferralCode);
 router.get('/me/referral/ledger', auth(['influencer']), ctrl.getMyReferralLedger);
+router.post('/me/referral/invite', auth(['influencer']), ctrl.sendMyReferralInvite);
 // Update profile picture (multipart or JSON imageUrl)
 router.put('/me/profile-pic', auth(['influencer']), fileUpload, ctrl.updateProfilePic);
 // Pricing (get/update)
@@ -31,6 +32,15 @@ router.get('/me/payment-methods', auth(['influencer']), require('../controllers/
 router.put('/me/payment-methods', auth(['influencer']), require('../controllers/paymentController').upsertMe);
 router.delete('/me/payment-methods/:id', auth(['influencer']), require('../controllers/paymentController').removeMe);
 router.put('/me/payment-methods/:id/preferred', auth(['influencer']), require('../controllers/paymentController').setPreferredMe);
+
+// Photoshoots (free studio shoot request + booking)
+const photoshootCtrl = require('../controllers/photoshootController');
+router.post('/me/photoshoots/requests', auth(['influencer']), photoshootCtrl.createMe);
+router.get('/me/photoshoots/requests', auth(['influencer']), photoshootCtrl.listMe);
+router.post('/me/photoshoots/requests/book-latest', auth(['influencer']), photoshootCtrl.bookLatestMe);
+router.get('/me/photoshoots/requests/:ulid', auth(['influencer']), photoshootCtrl.getMe);
+router.put('/me/photoshoots/requests/:ulid', auth(['influencer']), photoshootCtrl.updateMe);
+router.post('/me/photoshoots/requests/:ulid/book', auth(['influencer']), photoshootCtrl.bookMe);
 // Admin badge assignment
 router.put('/:id/badges', auth(['admin', 'superadmin']), ctrl.assignBadge);
 // Influencer ad posts

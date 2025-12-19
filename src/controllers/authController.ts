@@ -13,7 +13,55 @@ function rateLimitRefresh(key) {
   entry.count += 1;
   return { allowed: true };
 }
-const { User, Influencer, Brand, OtpRequest, RefreshToken, InfluencerKyc, InfluencerPaymentMethod } = require('../models');
+const db = require('../models');
+const { User, Influencer, Brand, OtpRequest, RefreshToken, InfluencerKyc, InfluencerPaymentMethod } = db;
+const { Op } = require('sequelize');
+
+let _influencerUlidColumnKnown: null | boolean = null;
+async function influencerTableHasUlidColumn() {
+  if (_influencerUlidColumnKnown !== null) return _influencerUlidColumnKnown;
+  try {
+    const qi = db.sequelize.getQueryInterface();
+    let tableName = 'Influencers';
+    try {
+      await qi.describeTable('Influencers');
+    } catch (err1) {
+      await qi.describeTable('influencers');
+      tableName = 'influencers';
+    }
+    const table = await qi.describeTable(tableName);
+    _influencerUlidColumnKnown = Object.prototype.hasOwnProperty.call(table, 'ulid');
+  } catch (_) {
+    // If we can't introspect, assume it exists (keeps behavior unchanged).
+    _influencerUlidColumnKnown = true;
+  }
+  return _influencerUlidColumnKnown;
+}
+
+async function fetchInfluencerRowWithoutUlid(userId: number) {
+  const qi = db.sequelize.getQueryInterface();
+  let tableName = 'Influencers';
+  try {
+    await qi.describeTable('Influencers');
+  } catch (err1) {
+    await qi.describeTable('influencers');
+    tableName = 'influencers';
+  }
+  const qTable = '"' + String(tableName).replace(/"/g, '""') + '"';
+  const [rows] = await db.sequelize.query(
+    `SELECT "id", "userId", "handle", "profilePicUrl", "verificationStatus" FROM ${qTable} WHERE "userId" = :userId LIMIT 1`,
+    { replacements: { userId } }
+  );
+  if (!Array.isArray(rows) || rows.length === 0) return null;
+  return {
+    id: rows[0].id,
+    userId: rows[0].userId,
+    handle: rows[0].handle || null,
+    profilePicUrl: rows[0].profilePicUrl || null,
+    verificationStatus: rows[0].verificationStatus || 'none',
+    ulid: null,
+  };
+}
 function hashToken(raw) {
   return crypto.createHash('sha256').update(raw).digest('hex');
 }
@@ -58,7 +106,31 @@ async function issueSession(user) {
   const tokenHash = hashToken(rawRefresh);
   const refreshExpiresAt = new Date(Date.now() + refreshTtlDays * 24 * 60 * 60 * 1000);
   await RefreshToken.create({ userId: user.id, tokenHash, expiresAt: refreshExpiresAt, revoked: false });
-  const infl = user.role === 'influencer' ? await Influencer.findOne({ where: { userId: user.id } }) : null;
+  let infl = null;
+  if (user.role === 'influencer') {
+    // If DB schema is behind (missing Influencers.ulid), avoid Sequelize model queries entirely.
+    if (!(await influencerTableHasUlidColumn())) {
+      infl = await fetchInfluencerRowWithoutUlid(user.id);
+    }
+    try {
+      if (!infl) infl = await Influencer.findOne({ where: { userId: user.id } });
+    } catch (e) {
+      const msg = String(e?.message || '');
+      if (/column\s+"ulid"\s+does\s+not\s+exist/i.test(msg) && typeof db.ensureInfluencerUlidColumn === 'function') {
+        try {
+          await db.ensureInfluencerUlidColumn();
+          infl = await Influencer.findOne({ where: { userId: user.id } });
+        } catch (_) {
+          // If the DB user has no ALTER permissions (or we're pointed at a different DB),
+          // don't hard-fail login. Fall back to a raw query that doesn't reference ulid.
+          try {
+            infl = await fetchInfluencerRowWithoutUlid(user.id);
+          } catch (_) {}
+        }
+      }
+      if (!infl) throw e;
+    }
+  }
 
   let influencerSummary = null;
   if (infl) {
@@ -122,6 +194,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const { OAuth2Client } = require('google-auth-library');
+const sendWhatsappOtp = require('../services/sendWhatsappOtp');
 
 // Simple in-memory OTP store: { phone: { otp, expiresAt, requestId } }
 const otpStore = new Map();
@@ -213,6 +286,18 @@ async function createOtpForPhone(phone: string, userId?: number | null) {
   return { otp, requestId, expiresAt };
 }
 
+async function rateLimitOtpRequest(phone: string) {
+  const windowMin = parseInt(process.env.OTP_REQUEST_RATE_WINDOW_MINUTES || '10', 10);
+  const max = parseInt(process.env.OTP_REQUEST_RATE_MAX || '3', 10);
+  if (!windowMin || !max) return { allowed: true };
+  const since = new Date(Date.now() - windowMin * 60 * 1000);
+  const count = await OtpRequest.count({ where: { phone: String(phone), createdAt: { [Op.gte]: since } } });
+  if (count >= max) {
+    return { allowed: false, retryAfterSec: windowMin * 60 };
+  }
+  return { allowed: true };
+}
+
 async function verifyOtpForPhone(params: { phone: string; otp: string; requestId?: string | null }) {
   const { phone, otp, requestId } = params;
   const where: any = { phone, otp, used: false };
@@ -298,8 +383,13 @@ exports.loginMobile = async (req, res) => {
     if (!ok) return res.status(401).json({ error: 'Invalid credentials' });
     const session = await issueSession(user);
     res.json(session);
-      } catch (err) { res.status(500).json({ error: err.message }); }
-    };
+  } catch (err) {
+    // Ensure errors are visible in server logs (Swagger UI otherwise just shows 500).
+    // eslint-disable-next-line no-console
+    console.error('loginMobile error:', err?.stack || err);
+    res.status(500).json({ error: err?.message || 'server_error' });
+  }
+};
 
 exports.googleAuth = async (req, res) => {
   try {
@@ -628,37 +718,71 @@ exports.requestMpinReset = async (req, res) => {
     if (!phone) return res.status(400).json({ error: 'phone is required' });
     const user = await User.findOne({ where: { phone } });
     if (!user) return res.status(400).json({ error: 'phone not found' });
-    const otp = String(Math.floor(100000 + Math.random() * 900000));
-    const requestId = 'req_' + crypto.randomBytes(8).toString('hex');
-    const ttlMinutes = parseInt(process.env.OTP_TTL_MINUTES || '10', 10);
-    const expiresAt = Date.now() + ttlMinutes * 60 * 1000;
-    // Persist OTP request
-    await OtpRequest.create({
-      userId: user.id,
-      phone,
-      otp,
-      requestId,
-      expiresAt: new Date(expiresAt),
-      used: false
-    });
-    // Also keep in-memory for quick validation (optional)
-    otpStore.set(phone, { otp, expiresAt, requestId });
-    // TODO: integrate SMS provider here to send OTP
-    res.json({ requestId });
+    // Basic abuse protection (DB-backed; defaults to 3 requests / 10 minutes).
+    const rate = await rateLimitOtpRequest(String(phone));
+    if (!rate.allowed) return res.status(429).json({ error: 'too many requests', retryAfterSec: rate.retryAfterSec });
+
+    const { otp, requestId } = await createOtpForPhone(String(phone), user.id);
+
+    // Send OTP via WhatsApp template when configured.
+    const shouldSendWhatsapp = (process.env.OTP_DELIVERY_CHANNEL || 'whatsapp').toLowerCase() === 'whatsapp';
+    if (shouldSendWhatsapp && process.env.WHATSAPP_PHONE_NUMBER_ID && process.env.WHATSAPP_ACCESS_TOKEN) {
+      try {
+        await sendWhatsappOtp({ phone: String(phone), otp: String(otp), purpose: 'mpin_reset' });
+      } catch (e) {
+        if ((process.env.NODE_ENV || 'development') === 'production') {
+          // eslint-disable-next-line no-console
+          console.error('WhatsApp OTP send failed (production):', e?.code || e?.message || e, e?.provider || '');
+          return res.status(502).json({ error: 'otp_send_failed' });
+        }
+        console.warn('WhatsApp OTP send failed (non-production):', e?.message || e);
+      }
+    }
+
+    const payload: any = { requestId };
+    if ((process.env.NODE_ENV || 'development') !== 'production') payload.otp = otp;
+    res.json(payload);
   } catch (err) { res.status(500).json({ error: err.message }); }
 };
 
 // Generic OTP request for phone verification (signup/linking)
 exports.requestOtp = async (req, res) => {
   try {
-    const { phone } = req.body || {};
+    const { phone, purpose, email } = req.body || {};
     if (!phone) return res.status(400).json({ error: 'phone is required' });
+
+    // Basic abuse protection (DB-backed; defaults to 3 requests / 10 minutes).
+    const rate = await rateLimitOtpRequest(String(phone));
+    if (!rate.allowed) return res.status(429).json({ error: 'too many requests', retryAfterSec: rate.retryAfterSec });
+
     const user = await User.findOne({ where: { phone: String(phone) } });
     const { otp, requestId } = await createOtpForPhone(String(phone), user?.id ?? null);
+
+    // Send OTP via WhatsApp template when configured.
+    // - Production: fail fast if provider call fails (so the client can retry)
+    // - Non-production: do not block the response (OTP is returned for dev testing anyway)
+    const shouldSendWhatsapp = (process.env.OTP_DELIVERY_CHANNEL || 'whatsapp').toLowerCase() === 'whatsapp';
+    if (shouldSendWhatsapp && process.env.WHATSAPP_PHONE_NUMBER_ID && process.env.WHATSAPP_ACCESS_TOKEN) {
+      try {
+        await sendWhatsappOtp({
+          phone: String(phone),
+          otp: String(otp),
+          purpose: purpose ? String(purpose) : 'google_link',
+          email: email ? String(email) : null
+        });
+      } catch (e) {
+        if ((process.env.NODE_ENV || 'development') === 'production') {
+          // eslint-disable-next-line no-console
+          console.error('WhatsApp OTP send failed (production):', e?.code || e?.message || e, e?.provider || '');
+          return res.status(502).json({ error: 'otp_send_failed' });
+        }
+        console.warn('WhatsApp OTP send failed (non-production):', e?.message || e);
+      }
+    }
+
     const payload: any = { requestId };
     // Do not leak OTP in production.
     if ((process.env.NODE_ENV || 'development') !== 'production') payload.otp = otp;
-    // TODO: integrate SMS provider here to send OTP
     return res.json(payload);
   } catch (err) {
     return res.status(500).json({ error: err.message });

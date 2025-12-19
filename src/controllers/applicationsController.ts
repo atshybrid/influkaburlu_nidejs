@@ -1,4 +1,4 @@
-const { Application, Ad, Influencer, Payout, ReferralCommission } = require('../models');
+const { Application, Ad, Influencer, Payout, ReferralCommission, BrandMember, PrCommission } = require('../models');
 
 function computeTierBadgeFromCompletedAdsCount(count) {
   const n = Math.max(parseInt(count || 0, 10) || 0, 0);
@@ -76,6 +76,52 @@ async function maybeCreateReferralCommission({ sourceInfluencerId, payout }) {
   }
 }
 
+async function maybeCreatePrCommission({ ad, app, payout }) {
+  try {
+    const brandId = ad?.brandId;
+    if (!brandId) return null;
+
+    const primary = await BrandMember.findOne({ where: { brandId, memberRole: 'pr', isPrimary: true } });
+    const member = primary || (await BrandMember.findOne({ where: { brandId, memberRole: 'pr' } }));
+    const prUserId = member?.userId;
+    if (!prUserId) return null;
+
+    const grossRate = Math.max(Math.min(parseFloat(process.env.PR_GROSS_RATE || '0') || 0, 1), 0);
+    const commissionShareRate = Math.max(Math.min(parseFloat(process.env.PR_COMMISSION_RATE || '0.10') || 0, 1), 0);
+
+    const grossAmount = parseFloat(payout?.grossAmount || 0);
+    const platformCommission = parseFloat(payout?.commission || 0);
+
+    const amount = +(grossRate > 0
+      ? (grossAmount * grossRate)
+      : (platformCommission * commissionShareRate)
+    ).toFixed(2);
+    if (!amount || amount <= 0) return null;
+
+    const existing = await PrCommission.findOne({ where: { prUserId, payoutId: payout.id } });
+    if (existing) return existing;
+
+    const row = await PrCommission.create({
+      prUserId,
+      brandId,
+      adId: ad.id || null,
+      applicationId: app.id || null,
+      payoutId: payout.id,
+      amount,
+      status: 'earned',
+      meta: {
+        ...(grossRate > 0
+          ? { rate: grossRate, base: 'gross' }
+          : { rate: commissionShareRate, base: 'platform_commission' }),
+        source: 'payout_completed',
+      },
+    });
+    return row;
+  } catch (_) {
+    return null;
+  }
+}
+
 exports.applyToAd = async (req, res) => {
   try {
     const adId = req.params.adId;
@@ -117,6 +163,8 @@ exports.approveAndPayout = async (req, res) => {
     } catch (_) {}
     // Referrals: create commission for referrer (best-effort)
     await maybeCreateReferralCommission({ sourceInfluencerId: app.influencerId, payout });
+    // PR: commission for assigned PR of the brand (best-effort)
+    await maybeCreatePrCommission({ ad, app, payout });
     res.json({ app: { ...app.toJSON(), adIdUlid: ad.ulid }, payout });
   } catch (err) { res.status(500).json({ error: err.message }); }
 };

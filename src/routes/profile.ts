@@ -2,6 +2,7 @@ const router = require('express').Router();
 const ctrl = require('../controllers/profileBuilder');
 const auth = require('../middleware/auth');
 router.post('/generate', auth(['influencer']), ctrl.generate);
+router.post('/generate-from-me', auth(['influencer']), ctrl.generateFromMe);
 router.get('/pack/:id', ctrl.getPack);
 router.post('/generate-photos', auth(['influencer']), ctrl.generatePhotos);
 router.post('/pack/:id/photos', auth(['influencer','admin']), ctrl.addPhotoToPack);

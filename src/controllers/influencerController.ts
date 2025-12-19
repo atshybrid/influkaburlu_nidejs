@@ -4,6 +4,7 @@ const { uploadBuffer } = require('../utils/r2');
 const fs = require('fs');
 const crypto = require('crypto');
 const { slugify } = require('../utils/slugify');
+const sendWhatsappReferralInvite = require('../services/sendWhatsappReferralInvite');
 
 const ALLOWED_BADGES = ['Ready', 'Fit', 'Pro', 'Prime', 'Elite'];
 
@@ -28,6 +29,30 @@ async function ensureReferralCode(infl) {
   infl.referralCode = code;
   await infl.save();
   return code;
+}
+
+const referralInviteRate = new Map();
+function rateLimitReferralInvite(key: string) {
+  const windowMs = parseInt(process.env.REFERRAL_INVITE_RATE_WINDOW_MS || '600000', 10); // 10 min
+  const max = parseInt(process.env.REFERRAL_INVITE_RATE_MAX || '5', 10);
+  const now = Date.now();
+  const entry = referralInviteRate.get(key);
+  if (!entry || now > entry.resetAt) {
+    referralInviteRate.set(key, { count: 1, resetAt: now + windowMs });
+    return { allowed: true };
+  }
+  if (entry.count >= max) return { allowed: false, retryAfterMs: entry.resetAt - now };
+  entry.count += 1;
+  return { allowed: true };
+}
+
+function buildReferralShareUrl(referralCode: string) {
+  const base = (process.env.REFERRAL_INVITE_FRONTEND_URL || process.env.FRONTEND_URL || '').trim();
+  if (!base) return null;
+  const path = (process.env.REFERRAL_INVITE_PATH || '/referral').trim() || '/referral';
+  const sep = path.includes('?') ? '&' : '?';
+  const url = base.replace(/\/+$/, '') + (path.startsWith('/') ? path : '/' + path) + `${sep}code=${encodeURIComponent(referralCode)}`;
+  return url;
 }
 
 exports.getMyReferral = async (req, res) => {
@@ -150,6 +175,43 @@ exports.getMyReferralLedger = async (req, res) => {
     return res.json({ total, limit, offset, items });
   } catch (err) {
     return res.status(500).json({ error: 'server_error', details: err.message });
+  }
+};
+
+// Influencer: send referral invite via WhatsApp template
+exports.sendMyReferralInvite = async (req, res) => {
+  try {
+    const infl = await Influencer.findOne({ where: { userId: req.user.id }, include: [{ model: User, attributes: ['name'] }] });
+    if (!infl) return res.status(404).json({ error: 'not found' });
+
+    const phone = String(req.body?.phone || '').trim();
+    const receiverName = req.body?.receiverName != null ? String(req.body.receiverName).trim() : null;
+    if (!phone) return res.status(400).json({ error: 'phone_required' });
+
+    const rate = rateLimitReferralInvite(`u:${req.user.id}`);
+    if (!rate.allowed) return res.status(429).json({ error: 'too many requests', retryAfterMs: rate.retryAfterMs });
+
+    const referralCode = await ensureReferralCode(infl);
+    const referrerName = (infl.User?.name || infl.handle || 'Influ Kaburlu').trim();
+    const shareUrl = buildReferralShareUrl(referralCode);
+
+    const result = await sendWhatsappReferralInvite({
+      phone,
+      receiverName,
+      referrerName,
+      referralCode,
+      shareUrl
+    });
+
+    return res.json({
+      ok: true,
+      referralCode,
+      shareUrl,
+      whatsapp: result?.data || null
+    });
+  } catch (err) {
+    const msg = err?.response?.data || err?.message || 'send_failed';
+    return res.status(502).json({ error: 'whatsapp_send_failed', details: msg });
   }
 };
 
