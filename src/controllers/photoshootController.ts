@@ -2,6 +2,14 @@ const { PhotoshootRequest, Influencer, User } = require('../models');
 const { Op } = require('sequelize');
 const whatsappPhotoshoot = require('../services/sendWhatsappPhotoshoot');
 
+function maskPhoneForLog(phone) {
+  const digits = String(phone || '').replace(/\D/g, '');
+  if (!digits) return null;
+  const last4 = digits.slice(-4);
+  const prefix = digits.length > 4 ? '*'.repeat(Math.min(digits.length - 4, 8)) : '';
+  return `${prefix}${last4}`;
+}
+
 function isNonEmptyString(value) {
   return typeof value === 'string' && value.trim().length > 0;
 }
@@ -344,10 +352,20 @@ exports.createMe = async (req, res) => {
 
     // WhatsApp confirmation (best-effort)
     try {
-      if (whatsappPhotoshoot?.isWhatsAppConfigured?.()) {
+      if (!whatsappPhotoshoot?.isWhatsAppConfigured?.()) {
+        console.warn('WhatsApp photoshoot request-created skipped: WhatsApp not configured');
+      } else {
         const user = await User.findOne({ where: { id: req.user.id } });
         const phone = user?.phone;
-        if (phone) {
+        if (!phone) {
+          console.warn('WhatsApp photoshoot request-created skipped: missing user.phone', { userId: req.user?.id });
+        } else {
+          console.info('WhatsApp photoshoot request-created attempting send', {
+            userId: req.user?.id,
+            to: maskPhoneForLog(phone),
+            template: process.env.WHATSAPP_PHOTOSHOOT_REQUEST_CREATED_TEMPLATE_NAME || null,
+            requestUlid: row.ulid
+          });
           await whatsappPhotoshoot.sendPhotoshootRequestCreated({
             req,
             phone,
@@ -824,12 +842,24 @@ exports.adminSchedule = async (req, res) => {
 
     // WhatsApp notification (best-effort)
     try {
-      if (whatsappPhotoshoot?.isWhatsAppConfigured?.()) {
+      if (!whatsappPhotoshoot?.isWhatsAppConfigured?.()) {
+        console.warn('WhatsApp photoshoot scheduled skipped: WhatsApp not configured');
+      } else {
         const influencer = await Influencer.findOne({ where: { id: row.influencerId } });
-        if (influencer?.userId) {
+        if (!influencer?.userId) {
+          console.warn('WhatsApp photoshoot scheduled skipped: influencer missing userId', { influencerId: row.influencerId, requestUlid: row.ulid });
+        } else {
           const user = await User.findOne({ where: { id: influencer.userId } });
           const phone = user?.phone;
-          if (phone) {
+          if (!phone) {
+            console.warn('WhatsApp photoshoot scheduled skipped: missing user.phone', { userId: influencer.userId, requestUlid: row.ulid });
+          } else {
+            console.info('WhatsApp photoshoot scheduled attempting send', {
+              userId: influencer.userId,
+              to: maskPhoneForLog(phone),
+              template: process.env.WHATSAPP_PHOTOSHOOT_SCHEDULED_TEMPLATE_NAME || null,
+              requestUlid: row.ulid
+            });
             await whatsappPhotoshoot.sendPhotoshootScheduled({
               req,
               phone,
