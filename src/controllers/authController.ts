@@ -732,7 +732,15 @@ exports.requestMpinReset = async (req, res) => {
       } catch (e) {
         if ((process.env.NODE_ENV || 'development') === 'production') {
           // eslint-disable-next-line no-console
-          console.error('WhatsApp OTP send failed (production):', e?.code || e?.message || e, e?.provider || '');
+          const maskedPhone = String(phone).replace(/\d(?=\d{4})/g, '*');
+          console.error('WhatsApp OTP send failed (production):', {
+            code: e?.code || null,
+            message: e?.message || null,
+            purpose: 'mpin_reset',
+            requestId,
+            phone: maskedPhone,
+            provider: e?.provider || null
+          });
           return res.status(502).json({ error: 'otp_send_failed' });
         }
         console.warn('WhatsApp OTP send failed (non-production):', e?.message || e);
@@ -767,14 +775,22 @@ exports.requestOtp = async (req, res) => {
         await sendWhatsappOtp({
           phone: String(phone),
           otp: String(otp),
-          // Use the same approved WhatsApp template as MPIN reset.
-          purpose: 'mpin_reset',
+          // Best-practice: use a dedicated OTP template (falls back safely if not configured).
+          purpose: 'otp',
           email: email ? String(email) : null
         });
       } catch (e) {
         if ((process.env.NODE_ENV || 'development') === 'production') {
           // eslint-disable-next-line no-console
-          console.error('WhatsApp OTP send failed (production):', e?.code || e?.message || e, e?.provider || '');
+          const maskedPhone = String(phone).replace(/\d(?=\d{4})/g, '*');
+          console.error('WhatsApp OTP send failed (production):', {
+            code: e?.code || null,
+            message: e?.message || null,
+            purpose: 'otp',
+            requestId,
+            phone: maskedPhone,
+            provider: e?.provider || null
+          });
           return res.status(502).json({ error: 'otp_send_failed' });
         }
         console.warn('WhatsApp OTP send failed (non-production):', e?.message || e);

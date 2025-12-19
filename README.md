@@ -58,6 +58,34 @@ Note: Keep Sequelize as the primary ORM until we migrate endpoints.
 - If secrets are exposed or shared, rotate them immediately in the provider dashboards (Razorpay/OpenAI/Cloudflare), then update your local `.env`.
 - Prefer environment injection in production (CI/host secrets, container env vars) over bundling `.env` files.
 
+## WhatsApp OTP (Cloud API)
+
+This backend can deliver OTP via WhatsApp Cloud API when `OTP_DELIVERY_CHANNEL=whatsapp`.
+
+Required:
+
+- `WHATSAPP_PHONE_NUMBER_ID`
+- `WHATSAPP_ACCESS_TOKEN`
+- `WHATSAPP_API_VERSION` (optional; defaults to `v19.0`)
+
+Templates (best-practice):
+
+- Generic OTP flow (signup/linking):
+	- `WHATSAPP_OTP_TEMPLATE_NAME`
+	- `WHATSAPP_OTP_TEMPLATE_LANG` (optional; default `en_US`)
+	- `WHATSAPP_OTP_TEMPLATE_MODE` (optional; default `otp_only`)
+	- `WHATSAPP_OTP_INCLUDE_BUTTON_URL` (optional; default `false`)
+- MPIN reset flow:
+	- `WHATSAPP_MPIN_RESET_TEMPLATE_NAME`
+	- `WHATSAPP_MPIN_RESET_TEMPLATE_LANG` (optional; default `en_US`)
+	- `WHATSAPP_MPIN_RESET_TEMPLATE_MODE` (optional; default `otp_only`)
+	- `WHATSAPP_MPIN_RESET_INCLUDE_BUTTON_URL` (optional; default `false`)
+
+Notes:
+
+- If `WHATSAPP_OTP_TEMPLATE_*` is not set, the server falls back to `WHATSAPP_MPIN_RESET_TEMPLATE_*` so production can keep working with a single approved template.
+- Phone numbers are normalized to WhatsApp international digits-only format; common inputs like `+91xxxxxxxxxx`, `91xxxxxxxxxx`, `0xxxxxxxxxx`, `091xxxxxxxxxx`, `0091xxxxxxxxxx` are accepted.
+
 ## DB Migrations: No-Data-Loss Rules
 
 When adding new features, **never lose existing production data**. Follow these rules every time you change the database.

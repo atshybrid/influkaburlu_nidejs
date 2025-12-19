@@ -18,7 +18,15 @@ function normalizeWhatsAppTo(phone: string) {
   // Common local formats:
   // - 10 digits: assume default country code
   // - 11 digits starting with 0: strip 0 and assume default country code
+  // - 0 + <country code> + <subscriber number>: strip leading 0
+  // - 00 + <country code> + <subscriber number>: strip leading 00
   let digits = rawDigits;
+  if (digits.startsWith('00') && digits.length > 2) {
+    digits = digits.slice(2);
+  }
+  if (digits.startsWith('0') && digits.startsWith(`0${defaultCc}`) && digits.length === 1 + defaultCc.length + 10) {
+    digits = digits.slice(1);
+  }
   if (digits.length === 11 && digits.startsWith('0')) {
     digits = digits.slice(1);
   }
@@ -113,7 +121,7 @@ async function sendWhatsappOtp(params: { phone: string; otp: string; purpose?: s
       ? process.env.WHATSAPP_GMAIL_LINK_TEMPLATE_NAME
       : purpose === 'mpin_reset'
         ? process.env.WHATSAPP_MPIN_RESET_TEMPLATE_NAME
-        : process.env.WHATSAPP_OTP_TEMPLATE_NAME) ||
+        : process.env.WHATSAPP_OTP_TEMPLATE_NAME || process.env.WHATSAPP_MPIN_RESET_TEMPLATE_NAME) ||
     process.env.WHATSAPP_TEMPLATE_NAME;
 
   const languageCode =
@@ -121,7 +129,7 @@ async function sendWhatsappOtp(params: { phone: string; otp: string; purpose?: s
       ? process.env.WHATSAPP_GMAIL_LINK_TEMPLATE_LANG
       : purpose === 'mpin_reset'
         ? process.env.WHATSAPP_MPIN_RESET_TEMPLATE_LANG
-        : process.env.WHATSAPP_OTP_TEMPLATE_LANG) ||
+        : process.env.WHATSAPP_OTP_TEMPLATE_LANG || process.env.WHATSAPP_MPIN_RESET_TEMPLATE_LANG) ||
     process.env.WHATSAPP_TEMPLATE_LANG ||
     'en_US';
 
@@ -139,7 +147,7 @@ async function sendWhatsappOtp(params: { phone: string; otp: string; purpose?: s
       ? process.env.WHATSAPP_GMAIL_LINK_INCLUDE_BUTTON_URL
       : purpose === 'mpin_reset'
         ? process.env.WHATSAPP_MPIN_RESET_INCLUDE_BUTTON_URL
-        : process.env.WHATSAPP_OTP_INCLUDE_BUTTON_URL) ||
+        : process.env.WHATSAPP_OTP_INCLUDE_BUTTON_URL || process.env.WHATSAPP_MPIN_RESET_INCLUDE_BUTTON_URL) ||
     'false';
   const includeButton = String(includeButtonEnv).toLowerCase() === 'true';
 
@@ -150,7 +158,7 @@ async function sendWhatsappOtp(params: { phone: string; otp: string; purpose?: s
       ? process.env.WHATSAPP_GMAIL_LINK_TEMPLATE_MODE
       : purpose === 'mpin_reset'
         ? process.env.WHATSAPP_MPIN_RESET_TEMPLATE_MODE
-        : process.env.WHATSAPP_OTP_TEMPLATE_MODE) ||
+        : process.env.WHATSAPP_OTP_TEMPLATE_MODE || process.env.WHATSAPP_MPIN_RESET_TEMPLATE_MODE) ||
     'otp_only';
   const mode = String(templateMode).toLowerCase();
   const email = (params.email || '').trim();
