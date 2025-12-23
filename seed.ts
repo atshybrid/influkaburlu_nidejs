@@ -28,6 +28,7 @@ async function seed() {
   const pw = await bcrypt.hash('password', 10);
   // Seed roles
   const roleAdmin = await db.Role.findOrCreate({ where: { key: 'admin' }, defaults: { name: 'Admin' } }).then(r=>r[0]);
+  const roleSuperadmin = await db.Role.findOrCreate({ where: { key: 'superadmin' }, defaults: { name: 'Superadmin' } }).then(r=>r[0]);
   const roleBrand = await db.Role.findOrCreate({ where: { key: 'brand' }, defaults: { name: 'Brand' } }).then(r=>r[0]);
   const roleInfluencer = await db.Role.findOrCreate({ where: { key: 'influencer' }, defaults: { name: 'Influencer' } }).then(r=>r[0]);
 
@@ -82,9 +83,19 @@ async function seed() {
   const ad = await db.Ad.create({ brandId: brand.id, title:'Demo Ad All India', description:'Promote product', targetStates:['Telangana','Andhra Pradesh'], language:'Telugu', deliverableType:'reel', payPerInfluencer:1200, budget:12000, deadline: new Date(Date.now()+7*24*3600*1000) });
   // Super Admin default login
   const superMpinHash = await bcrypt.hash('199229', 10);
-  await db.User.findOrCreate({
+  const [superadminUser] = await db.User.findOrCreate({
     where: { phone: '8282868389' },
-    defaults: { name: 'Super Admin', email: 'superadmin@kaburlu.test', phone: '8282868389', passwordHash: superMpinHash, role: 'admin' }
+    defaults: { name: 'Super Admin', email: 'superadmin@kaburlu.test', phone: '8282868389', passwordHash: superMpinHash, role: 'superadmin' }
+  });
+  // Ensure role is correct even if the user already existed
+  if (superadminUser.role !== 'superadmin') {
+    superadminUser.role = 'superadmin';
+    await superadminUser.save();
+  }
+  // Ensure the many-to-many role link exists for middleware checks
+  await db.UserRole.findOrCreate({
+    where: { userId: superadminUser.id, roleId: roleSuperadmin.id },
+    defaults: { userId: superadminUser.id, roleId: roleSuperadmin.id }
   });
   // Ensure ULIDs exist for all core tables (in case of legacy rows)
   const { ulid } = require('ulid');

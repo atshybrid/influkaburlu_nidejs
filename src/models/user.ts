@@ -9,7 +9,7 @@ module.exports = (sequelize, DataTypes) => {
     googleSub: { type: DataTypes.STRING },
     googlePictureUrl: { type: DataTypes.STRING },
     emailVerified: { type: DataTypes.BOOLEAN },
-    role: { type: DataTypes.ENUM('influencer','brand','admin'), defaultValue: 'influencer' }
+    role: { type: DataTypes.ENUM('influencer','brand','admin','superadmin'), defaultValue: 'influencer' }
   });
   return User;
 };

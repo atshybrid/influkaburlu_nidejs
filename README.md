@@ -78,8 +78,20 @@ Templates (best-practice):
 - MPIN reset flow:
 	- `WHATSAPP_MPIN_RESET_TEMPLATE_NAME`
 	- `WHATSAPP_MPIN_RESET_TEMPLATE_LANG` (optional; default `en_US`)
-	- `WHATSAPP_MPIN_RESET_TEMPLATE_MODE` (optional; default `otp_only`)
-	- `WHATSAPP_MPIN_RESET_INCLUDE_BUTTON_URL` (optional; default `false`)
+
+## WhatsApp Webhook (Callback URL)
+
+This backend exposes a WhatsApp Cloud API webhook endpoint for verification and delivery/status callbacks.
+
+- Callback URL: `https://<your-domain>/webhook/whatsapp`
+- Verification (GET): used by Meta to verify your endpoint (must match `WEBHOOK_VERIFY_TOKEN`)
+- Notifications (POST): receives message delivery/read/failed status and incoming messages (if enabled in Meta)
+
+Required env:
+
+- `WEBHOOK_VERIFY_TOKEN` (a secret string you choose in Meta Webhooks settings)
+- `WHATSAPP_APP_SECRET` (recommended; used to validate `X-Hub-Signature-256` on POST callbacks)
+	- Alternative env name supported: `META_APP_SECRET`
 
 Notes:
 

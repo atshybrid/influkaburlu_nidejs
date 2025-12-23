@@ -8,6 +8,7 @@
     "start": "node dist/server.js",
     "dev": "nodemon --watch src --watch scripts --watch server.ts --ext ts,json --exec ts-node server.ts",
     "seed": "ts-node seed.ts",
+    "ensure:superadmin": "ts-node scripts/ensure-superadmin.ts",
     "openapi:generate": "ts-node scripts/generate-openapi.ts",
     "openapi:audit": "ts-node scripts/openapi-audit.ts",
     "smoke": "ts-node scripts/smoke-test.ts",

@@ -335,6 +335,23 @@ async function getMeInfluencer(req) {
   return influencer;
 }
 
+function extractDetailsFromSubmitBody(body) {
+  if (body && typeof body === 'object' && body.details && typeof body.details === 'object') {
+    return body.details;
+  }
+  if (!body || typeof body !== 'object') return {};
+
+  // Allow passing questionnaire fields at top-level, while also passing booking fields.
+  // Strip booking keys so they don't get stored inside details.
+  const details = { ...body };
+  delete details.requestedStartAt;
+  delete details.requestedEndAt;
+  delete details.requestedTimezone;
+  delete details.location;
+  delete details.details;
+  return details;
+}
+
 // Influencer: create/request a photoshoot
 exports.createMe = async (req, res) => {
   try {
@@ -398,6 +415,138 @@ exports.createMe = async (req, res) => {
   } catch (err) {
     const status = err.statusCode || 500;
     return res.status(status).json({ error: err.message || 'server_error' });
+  }
+};
+
+// Influencer: submit in one call (create + validate questionnaire + book slot time)
+// This avoids requiring the client to first get/track the request ULID.
+exports.submitMe = async (req, res) => {
+  try {
+    const influencer = await getMeInfluencer(req);
+    if (!influencer) return res.status(404).json({ error: 'influencer_not_found' });
+
+    const { requestedStartAt, requestedEndAt, requestedTimezone, location } = req.body || {};
+    const details = extractDetailsFromSubmitBody(req.body || {});
+
+    // Consent + full questionnaire required for booking.
+    requireUsageConsent(details);
+    requireBookingQuestionnaire(details);
+
+    if (!isNonEmptyString(requestedStartAt)) return res.status(400).json({ error: 'requestedStartAt_required' });
+    if (!isNonEmptyString(requestedEndAt)) return res.status(400).json({ error: 'requestedEndAt_required' });
+
+    const start = new Date(String(requestedStartAt));
+    const end = new Date(String(requestedEndAt));
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      return res.status(400).json({ error: 'invalid_datetime' });
+    }
+    if (end <= start) {
+      return res.status(400).json({ error: 'end_must_be_after_start' });
+    }
+
+    requireSlotAllowed(details, start, end);
+
+    const row = await PhotoshootRequest.create({
+      influencerId: influencer.id,
+      status: 'pending',
+      details,
+      requestedStartAt: start,
+      requestedEndAt: end,
+      requestedTimezone: isNonEmptyString(requestedTimezone) ? String(requestedTimezone) : null,
+      location: location && typeof location === 'object' ? location : {},
+    });
+
+    // WhatsApp confirmation (best-effort)
+    try {
+      if (!whatsappPhotoshoot?.isWhatsAppConfigured?.()) {
+        console.warn('WhatsApp photoshoot submit skipped: WhatsApp not configured');
+      } else {
+        const user = await User.findOne({ where: { id: req.user.id } });
+        const phone = user?.phone;
+        if (!phone) {
+          console.warn('WhatsApp photoshoot submit skipped: missing user.phone', { userId: req.user?.id });
+        } else {
+          console.info('WhatsApp photoshoot submit attempting send', {
+            userId: req.user?.id,
+            to: maskPhoneForLog(phone),
+            template: process.env.WHATSAPP_PHOTOSHOOT_REQUEST_CREATED_TEMPLATE_NAME || null,
+            requestUlid: row.ulid,
+          });
+          await whatsappPhotoshoot.sendPhotoshootRequestCreated({
+            req,
+            phone,
+            influencerName: user?.name || influencer?.handle || 'Creator',
+            requestUlid: row.ulid,
+          });
+        }
+      }
+    } catch (e) {
+      console.warn('WhatsApp photoshoot submit send failed:', e?.code || e?.message || e, e?.provider || '');
+    }
+
+    return res.json({
+      ok: true,
+      request: {
+        ulid: row.ulid,
+        status: row.status,
+        details: row.details,
+        requestedStartAt: row.requestedStartAt,
+        requestedEndAt: row.requestedEndAt,
+        requestedTimezone: row.requestedTimezone,
+        scheduledStartAt: row.scheduledStartAt,
+        scheduledEndAt: row.scheduledEndAt,
+        scheduledTimezone: row.scheduledTimezone,
+        location: row.location || {},
+        rejectReason: row.rejectReason || null,
+        adminNotes: row.adminNotes || null,
+        approvedAt: row.approvedAt || null,
+        scheduledAt: row.scheduledAt || null,
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
+      },
+    });
+  } catch (err) {
+    const status = err.statusCode || 500;
+    return res.status(status).json({ error: err.message || 'server_error' });
+  }
+};
+
+// Influencer: get latest request (no ULID in path)
+exports.getLatestMe = async (req, res) => {
+  try {
+    const influencer = await getMeInfluencer(req);
+    if (!influencer) return res.status(404).json({ error: 'influencer_not_found' });
+
+    const row = await PhotoshootRequest.findOne({
+      where: { influencerId: influencer.id },
+      order: [['createdAt', 'DESC']],
+    });
+
+    if (!row) return res.status(404).json({ error: 'no_requests' });
+
+    return res.json({
+      ok: true,
+      request: {
+        ulid: row.ulid,
+        status: row.status,
+        details: row.details,
+        requestedStartAt: row.requestedStartAt,
+        requestedEndAt: row.requestedEndAt,
+        requestedTimezone: row.requestedTimezone,
+        scheduledStartAt: row.scheduledStartAt,
+        scheduledEndAt: row.scheduledEndAt,
+        scheduledTimezone: row.scheduledTimezone,
+        location: row.location || {},
+        rejectReason: row.rejectReason || null,
+        adminNotes: row.adminNotes || null,
+        approvedAt: row.approvedAt || null,
+        scheduledAt: row.scheduledAt || null,
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
+      },
+    });
+  } catch (err) {
+    return res.status(500).json({ error: 'server_error', details: err.message });
   }
 };
 

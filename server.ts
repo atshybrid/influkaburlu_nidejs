@@ -8,6 +8,7 @@ try {
 }
 const express = require('express');
 const cors = require('cors');
+const crypto = require('crypto');
 const db = require('./src/models');
 const routes = require('./src/routes');
 const swaggerUi = require('swagger-ui-express');
@@ -27,12 +28,41 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
-app.use(express.json());
+// Capture raw body for webhook signature verification (Meta sends X-Hub-Signature-256)
+app.use(express.json({
+  verify: (req, _res, buf) => {
+    req.rawBody = buf;
+  }
+}));
 app.use(express.urlencoded({ extended: true }));
 // NOTE: Do NOT register express-fileupload globally.
 // We also use multer for some endpoints (e.g. influencer video upload), and double-parsing
 // multipart bodies will frequently cause "Unexpected end of form".
 // express-fileupload is mounted only on the specific routes that need req.files.
+
+function safeTimingEqual(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  const aBuf = Buffer.from(a, 'utf8');
+  const bBuf = Buffer.from(b, 'utf8');
+  if (aBuf.length !== bBuf.length) return false;
+  return crypto.timingSafeEqual(aBuf, bBuf);
+}
+
+function verifyMetaSignature(req) {
+  const appSecret = process.env.WHATSAPP_APP_SECRET || process.env.META_APP_SECRET;
+  if (!appSecret) {
+    console.warn('WhatsApp webhook: WHATSAPP_APP_SECRET not set; skipping signature verification');
+    return true;
+  }
+
+  const signature = req.get('x-hub-signature-256');
+  if (!signature) return false;
+
+  const raw = req.rawBody;
+  const bodyToSign = Buffer.isBuffer(raw) ? raw : Buffer.from(JSON.stringify(req.body ?? {}));
+  const expected = 'sha256=' + crypto.createHmac('sha256', appSecret).update(bodyToSign).digest('hex');
+  return safeTimingEqual(signature, expected);
+}
 
 app.use('/api', routes);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(openapi));
@@ -78,6 +108,61 @@ app.get('/sitemap.xml', async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: 'server_error', details: err.message });
   }
+});
+
+// ===============================
+// WhatsApp Webhook Verification
+// ===============================
+app.get('/webhook/whatsapp', (req, res) => {
+  const mode = req.query['hub.mode'];
+  const token = req.query['hub.verify_token'];
+  const challenge = req.query['hub.challenge'];
+
+  if (mode === 'subscribe' && token === process.env.WEBHOOK_VERIFY_TOKEN) {
+    console.log('✅ WhatsApp Webhook verified');
+    return res.status(200).send(challenge);
+  }
+  return res.sendStatus(403);
+});
+
+// ===============================
+// WhatsApp Message Status Webhook
+// ===============================
+app.post('/webhook/whatsapp', (req, res) => {
+  if (!verifyMetaSignature(req)) {
+    return res.sendStatus(403);
+  }
+
+  const entry = req.body?.entry?.[0];
+  const changes = entry?.changes?.[0];
+  const value = changes?.value;
+
+  // DELIVERY STATUS
+  if (Array.isArray(value?.statuses)) {
+    value.statuses.forEach((status) => {
+      console.log('📩 Message ID:', status.id);
+      console.log('📱 To:', status.recipient_id);
+      console.log('📌 Status:', status.status);
+      console.log('🕒 Timestamp:', status.timestamp);
+
+      if (status.errors) {
+        console.log('❌ Error:', status.errors);
+      }
+
+      /*
+        TODO:
+        Save status to DB
+        update message_logs set status='delivered/read/failed'
+      */
+    });
+  }
+
+  // Incoming messages (optional)
+  if (Array.isArray(value?.messages)) {
+    console.log('📨 Incoming message:', JSON.stringify(value.messages, null, 2));
+  }
+
+  res.sendStatus(200);
 });
 
 // Centralized error handler (ensures API errors return JSON, not HTML)

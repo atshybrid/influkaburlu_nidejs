@@ -3342,17 +3342,17 @@
                         {
                           "ulid": "01JZZZZ1234EFGH5678IJKL901",
                           "status": "pending",
-                          "requestedStartAt": null,
-                          "requestedEndAt": null,
-                          "requestedTimezone": null,
+                          "requestedStartAt": "2025-12-26T04:30:00.000Z",
+                          "requestedEndAt": "2025-12-26T06:30:00.000Z",
+                          "requestedTimezone": "Asia/Kolkata",
                           "scheduledStartAt": null,
                           "scheduledEndAt": null,
                           "scheduledTimezone": null,
-                          "location": {},
+                          "location": { "city": "Hyderabad", "area": "Madhapur" },
                           "rejectReason": null,
                           "adminNotes": null,
-                          "createdAt": "2025-12-19T08:00:00.000Z",
-                          "updatedAt": "2025-12-19T08:00:00.000Z"
+                          "createdAt": "2025-12-23T08:00:00.000Z",
+                          "updatedAt": "2025-12-23T08:00:00.000Z"
                         }
                       ]
                     }
@@ -3363,14 +3363,66 @@
           },
           "401": { "description": "Unauthorized" }
         }
-      },
+      }
+    },
+    "/api/influencers/me/photoshoots/requests/latest": {
+      "get": {
+        "tags": [
+          "Influencers",
+          "Photoshoots"
+        ],
+        "summary": "Influencer: get my latest photoshoot request (no ULID)",
+        "security": [
+          { "bearerAuth": [] }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/InfluencerPhotoshootRequestGetResponse" },
+                "examples": {
+                  "example": {
+                    "summary": "Latest request",
+                    "value": {
+                      "ok": true,
+                      "request": {
+                        "ulid": "01JZZZZ1234EFGH5678IJKL901",
+                        "status": "pending",
+                        "details": { "influencerAppointmentDetails": { "personal": { "fullName": "Rahul Kumar", "city": "Hyderabad" } } },
+                        "requestedStartAt": "2025-12-26T04:30:00.000Z",
+                        "requestedEndAt": "2025-12-26T06:30:00.000Z",
+                        "requestedTimezone": "Asia/Kolkata",
+                        "scheduledStartAt": null,
+                        "scheduledEndAt": null,
+                        "scheduledTimezone": null,
+                        "location": { "city": "Hyderabad", "area": "Madhapur" },
+                        "rejectReason": null,
+                        "adminNotes": null,
+                        "approvedAt": null,
+                        "scheduledAt": null,
+                        "createdAt": "2025-12-23T08:00:00.000Z",
+                        "updatedAt": "2025-12-23T08:00:00.000Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "description": "Unauthorized" },
+          "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+        }
+      }
+    },
+    "/api/influencers/me/photoshoots/requests/submit": {
       "post": {
         "tags": [
           "Influencers",
           "Photoshoots"
         ],
-        "summary": "Influencer: request free photoshoot",
-        "description": "Creates a photoshoot request. Consent is required: termsAccepted=true and publicDisplayConsent=true (photo usage consent for InfluKaburlu). If WhatsApp is configured, a template notification may be sent (best-effort; does not affect the API response).",
+        "summary": "Influencer: submit photoshoot request (answers + slot time) in one call",
+        "description": "Single-call flow for frontend: send the full questionnaire (details) + preferred slot time. Creates a pending request with requestedStartAt/requestedEndAt. Superadmin must still approve and schedule the final time.",
         "security": [
           { "bearerAuth": [] }
         ],
@@ -3378,60 +3430,26 @@
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/InfluencerPhotoshootRequestCreate" },
-              "example": {
-                "influencerAppointmentDetails": {
-                  "personal": {
-                    "fullName": "Rahul Kumar",
-                    "displayName": "rahul_fitlife",
-                    "gender": "male",
-                    "ageConfirmed18Plus": true,
-                    "city": "Hyderabad",
-                    "state": "TG"
-                  },
-                  "bodyMeasurements": {
-                    "heightCm": 175,
-                    "weightKg": 72,
-                    "chestBustCm": 98,
-                    "waistCm": 82,
-                    "hipCm": 96,
-                    "shoulderWidthCm": 46,
-                    "shoeSize": 9
-                  },
-                  "dressDetails": {
-                    "topSize": "M",
-                    "bottomSize": "M",
-                    "dressSize": "M",
-                    "preferredOutfits": ["Casual", "Professional"],
-                    "outfitColorsPreferred": ["Black", "Brand-Colors"]
-                  },
-                  "shootPreferences": {
-                    "shootPurpose": ["Profile Branding", "Portfolio"],
-                    "shootType": ["Indoor"],
-                    "shootStyle": ["Professional", "Lifestyle"],
-                    "boldnessLevel": "Normal",
-                    "cameraComfort": {
-                      "photo": true,
-                      "video": true,
-                      "talkingShot": true,
-                      "voiceOver": true
+              "schema": { "$ref": "#/components/schemas/InfluencerPhotoshootBookRequest" },
+              "examples": {
+                "example": {
+                  "summary": "Submit questionnaire + book preferred time",
+                  "value": {
+                    "requestedTimezone": "Asia/Kolkata",
+                    "requestedStartAt": "2025-12-26T10:00:00+05:30",
+                    "requestedEndAt": "2025-12-26T12:00:00+05:30",
+                    "location": { "city": "Hyderabad", "area": "Madhapur" },
+                    "details": {
+                      "influencerAppointmentDetails": {
+                        "personal": { "fullName": "Rahul Kumar", "city": "Hyderabad", "gender": "male", "bodyType": "Athletic", "skinTone": "Medium" },
+                        "bodyMeasurements": { "heightCm": 175, "shoeSize": 9 },
+                        "dressDetails": { "topSize": "M", "bottomSize": "M", "dressSize": "M", "preferredFit": "Regular", "preferredDressingStyle": ["Western"], "westernWearType": ["Jeans & Top"], "preferredOutfitColors": ["Black"] },
+                        "shootPreferences": { "shootStyle": ["Professional"], "poseComfortLevel": "Confident", "boldnessLevel": "Normal", "sleevelessAllowed": true, "cameraFacingComfort": true, "shootType": ["Indoor"] },
+                        "stylingPermissions": { "makeupPreference": "Natural", "accessoriesAllowed": true },
+                        "editingAndUsage": { "usagePermission": ["Website", "Social Media"], "photoshopBrandingAllowed": true },
+                        "consent": { "publicDisplayConsent": true, "termsAccepted": true, "date": "2025-12-23" }
+                      }
                     }
-                  },
-                  "stylingPermissions": {
-                    "makeupAllowed": true,
-                    "hairstyleChangesAllowed": true,
-                    "accessoriesAllowed": true,
-                    "propsAllowed": true
-                  },
-                  "editingAndUsage": {
-                    "editingPreference": ["Natural", "Retouched"],
-                    "photoshopBrandingAllowed": true,
-                    "usagePermission": ["InfluKaburlu Website", "Ads & Promotions", "Social Media", "SEO & Google Indexing"]
-                  },
-                  "consent": {
-                    "publicDisplayConsent": true,
-                    "termsAccepted": true,
-                    "date": "2025-12-19"
                   }
                 }
               }
@@ -3443,34 +3461,29 @@
             "description": "OK",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/InfluencerPhotoshootRequestCreateResponse" },
+                "schema": { "$ref": "#/components/schemas/InfluencerPhotoshootRequestGetResponse" },
                 "examples": {
                   "example": {
-                    "summary": "Created request",
+                    "summary": "Submitted",
                     "value": {
                       "ok": true,
                       "request": {
                         "ulid": "01JZZZZ1234EFGH5678IJKL901",
                         "status": "pending",
-                        "details": {
-                          "influencerAppointmentDetails": {
-                            "personal": { "fullName": "Rahul Kumar", "city": "Hyderabad", "gender": "male", "bodyType": "Athletic", "skinTone": "Medium" },
-                            "bodyMeasurements": { "heightCm": 175, "shoeSize": 9 },
-                            "dressDetails": { "topSize": "M", "bottomSize": "M", "dressSize": "M", "preferredFit": "Regular", "preferredDressingStyle": ["Western"], "westernWearType": ["Jeans & Top"], "preferredOutfitColors": ["Black"] },
-                            "shootPreferences": { "shootStyle": ["Professional"], "poseComfortLevel": "Confident", "boldnessLevel": "Normal", "sleevelessAllowed": true, "cameraFacingComfort": true, "shootType": ["Indoor"] },
-                            "stylingPermissions": { "makeupPreference": "Natural", "accessoriesAllowed": true },
-                            "editingAndUsage": { "usagePermission": ["Website", "Social Media"], "photoshopBrandingAllowed": true },
-                            "consent": { "publicDisplayConsent": true, "termsAccepted": true, "date": "2025-12-19" }
-                          }
-                        },
-                        "requestedStartAt": null,
-                        "requestedEndAt": null,
-                        "requestedTimezone": null,
+                        "details": { "influencerAppointmentDetails": { "personal": { "fullName": "Rahul Kumar", "city": "Hyderabad" } } },
+                        "requestedStartAt": "2025-12-26T04:30:00.000Z",
+                        "requestedEndAt": "2025-12-26T06:30:00.000Z",
+                        "requestedTimezone": "Asia/Kolkata",
                         "scheduledStartAt": null,
                         "scheduledEndAt": null,
                         "scheduledTimezone": null,
-                        "location": {},
-                        "updatedAt": "2025-12-19T08:00:00.000Z"
+                        "location": { "city": "Hyderabad", "area": "Madhapur" },
+                        "rejectReason": null,
+                        "adminNotes": null,
+                        "approvedAt": null,
+                        "scheduledAt": null,
+                        "createdAt": "2025-12-23T08:00:00.000Z",
+                        "updatedAt": "2025-12-23T08:00:00.000Z"
                       }
                     }
                   }
@@ -3480,286 +3493,6 @@
           },
           "400": { "description": "Bad request", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
           "401": { "description": "Unauthorized" }
-        }
-      }
-    },
-    "/api/influencers/me/photoshoots/requests/book-latest": {
-      "post": {
-        "tags": [
-          "Influencers",
-          "Photoshoots"
-        ],
-        "summary": "Influencer: book latest pending request (no ulid)",
-        "description": "Books the most recently created pending photoshoot request for the logged-in influencer. Booking enforces questionnaire answers + consent. If the stored request doesn't have full answers, include them in the booking body as 'details'.",
-        "security": [
-          { "bearerAuth": [] }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": { "$ref": "#/components/schemas/InfluencerPhotoshootBookRequest" },
-              "examples": {
-                "timeOnly": {
-                  "summary": "Book using stored questionnaire",
-                  "value": {
-                    "requestedTimezone": "Asia/Kolkata",
-                    "requestedStartAt": "2025-12-22T10:00:00+05:30",
-                    "requestedEndAt": "2025-12-22T12:00:00+05:30",
-                    "location": { "city": "Hyderabad" }
-                  }
-                },
-                "withDetails": {
-                  "summary": "Book and send questionnaire in same call",
-                  "value": {
-                    "requestedTimezone": "Asia/Kolkata",
-                    "requestedStartAt": "2025-12-22T10:00:00+05:30",
-                    "requestedEndAt": "2025-12-22T12:00:00+05:30",
-                    "details": {
-                      "influencerAppointmentDetails": {
-                        "personal": { "fullName": "Rahul Kumar", "city": "Hyderabad", "gender": "male", "bodyType": "Athletic", "skinTone": "Medium" },
-                        "bodyMeasurements": { "heightCm": 175, "shoeSize": 9 },
-                        "dressDetails": { "topSize": "M", "bottomSize": "M", "dressSize": "M", "preferredFit": "Regular", "preferredDressingStyle": ["Western"], "westernWearType": ["Jeans & Top"], "preferredOutfitColors": ["Black"] },
-                        "shootPreferences": { "shootStyle": ["Professional"], "poseComfortLevel": "Confident", "boldnessLevel": "Normal", "sleevelessAllowed": true, "cameraFacingComfort": true, "shootType": ["Indoor"] },
-                        "stylingPermissions": { "makeupPreference": "Natural", "accessoriesAllowed": true },
-                        "editingAndUsage": { "usagePermission": ["Website", "Social Media"], "photoshopBrandingAllowed": true },
-                        "consent": { "publicDisplayConsent": true, "termsAccepted": true, "date": "2025-12-19" }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/InfluencerPhotoshootRequestGetResponse" },
-                "examples": {
-                  "example": {
-                    "summary": "Booked",
-                    "value": {
-                      "ok": true,
-                      "request": {
-                        "ulid": "01JZZZZ1234EFGH5678IJKL901",
-                        "status": "pending",
-                        "details": { "influencerAppointmentDetails": { "personal": { "fullName": "Rahul Kumar", "city": "Hyderabad" } } },
-                        "requestedStartAt": "2025-12-22T04:30:00.000Z",
-                        "requestedEndAt": "2025-12-22T06:30:00.000Z",
-                        "requestedTimezone": "Asia/Kolkata",
-                        "scheduledStartAt": null,
-                        "scheduledEndAt": null,
-                        "scheduledTimezone": null,
-                        "location": { "city": "Hyderabad" },
-                        "rejectReason": null,
-                        "adminNotes": null,
-                        "approvedAt": null,
-                        "scheduledAt": null,
-                        "updatedAt": "2025-12-19T09:00:00.000Z"
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "400": { "description": "Bad request", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
-          "401": { "description": "Unauthorized" },
-          "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
-        }
-      }
-    },
-    "/api/influencers/me/photoshoots/requests/{ulid}": {
-      "get": {
-        "tags": [
-          "Influencers",
-          "Photoshoots"
-        ],
-        "summary": "Influencer: get my photoshoot request",
-        "security": [
-          { "bearerAuth": [] }
-        ],
-        "parameters": [
-          { "name": "ulid", "in": "path", "required": true, "schema": { "type": "string" } }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/InfluencerPhotoshootRequestGetResponse" },
-                "examples": {
-                  "example": {
-                    "summary": "Get request",
-                    "value": {
-                      "ok": true,
-                      "request": {
-                        "ulid": "01JZZZZ1234EFGH5678IJKL901",
-                        "status": "pending",
-                        "details": { "influencerAppointmentDetails": { "personal": { "fullName": "Rahul Kumar", "city": "Hyderabad" } } },
-                        "requestedStartAt": null,
-                        "requestedEndAt": null,
-                        "requestedTimezone": null,
-                        "scheduledStartAt": null,
-                        "scheduledEndAt": null,
-                        "scheduledTimezone": null,
-                        "location": {},
-                        "rejectReason": null,
-                        "adminNotes": null,
-                        "approvedAt": null,
-                        "scheduledAt": null,
-                        "createdAt": "2025-12-19T08:00:00.000Z",
-                        "updatedAt": "2025-12-19T08:00:00.000Z"
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "401": { "description": "Unauthorized" },
-          "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
-        }
-      },
-      "put": {
-        "tags": [
-          "Influencers",
-          "Photoshoots"
-        ],
-        "summary": "Influencer: update my photoshoot request (pending only)",
-        "security": [
-          { "bearerAuth": [] }
-        ],
-        "parameters": [
-          { "name": "ulid", "in": "path", "required": true, "schema": { "type": "string" } }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": { "$ref": "#/components/schemas/InfluencerPhotoshootRequestCreate" },
-              "examples": {
-                "example": {
-                  "summary": "Update questionnaire",
-                  "value": {
-                    "influencerAppointmentDetails": {
-                      "personal": { "fullName": "Rahul Kumar", "city": "Hyderabad", "gender": "male", "bodyType": "Athletic", "skinTone": "Medium" },
-                      "bodyMeasurements": { "heightCm": 175, "shoeSize": 9 },
-                      "dressDetails": { "topSize": "M", "bottomSize": "M", "dressSize": "M", "preferredFit": "Regular", "preferredDressingStyle": ["Western"], "westernWearType": ["Jeans & Top"], "preferredOutfitColors": ["Black"] },
-                      "shootPreferences": { "shootStyle": ["Professional"], "poseComfortLevel": "Confident", "boldnessLevel": "Normal", "sleevelessAllowed": true, "cameraFacingComfort": true, "shootType": ["Indoor"] },
-                      "stylingPermissions": { "makeupPreference": "Natural", "accessoriesAllowed": true },
-                      "editingAndUsage": { "usagePermission": ["Website", "Social Media"], "photoshopBrandingAllowed": true },
-                      "consent": { "publicDisplayConsent": true, "termsAccepted": true, "date": "2025-12-19" }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/InfluencerPhotoshootRequestCreateResponse" },
-                "examples": {
-                  "example": {
-                    "summary": "Updated",
-                    "value": {
-                      "ok": true,
-                      "request": {
-                        "ulid": "01JZZZZ1234EFGH5678IJKL901",
-                        "status": "pending",
-                        "details": { "influencerAppointmentDetails": { "personal": { "fullName": "Rahul Kumar", "city": "Hyderabad" } } },
-                        "updatedAt": "2025-12-19T09:10:00.000Z"
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "401": { "description": "Unauthorized" },
-          "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
-          "409": { "description": "Conflict", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
-        }
-      }
-    },
-    "/api/influencers/me/photoshoots/requests/{ulid}/book": {
-      "post": {
-        "tags": [
-          "Influencers",
-          "Photoshoots"
-        ],
-        "summary": "Influencer: book preferred appointment time (pending only)",
-        "description": "Sets the preferred appointment time. Booking enforces questionnaire answers + consent. If the stored request doesn't have full answers, include them in the booking body as 'details'. Superadmin must still approve + schedule the final shoot date/time.",
-        "security": [
-          { "bearerAuth": [] }
-        ],
-        "parameters": [
-          { "name": "ulid", "in": "path", "required": true, "schema": { "type": "string" } }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": { "$ref": "#/components/schemas/InfluencerPhotoshootBookRequest" },
-              "examples": {
-                "timeOnly": {
-                  "summary": "Book using stored questionnaire",
-                  "value": {
-                    "requestedTimezone": "Asia/Kolkata",
-                    "requestedStartAt": "2025-12-22T10:00:00+05:30",
-                    "requestedEndAt": "2025-12-22T12:00:00+05:30",
-                    "location": { "city": "Hyderabad" }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/InfluencerPhotoshootRequestGetResponse" },
-                "examples": {
-                  "example": {
-                    "summary": "Booked",
-                    "value": {
-                      "ok": true,
-                      "request": {
-                        "ulid": "01JZZZZ1234EFGH5678IJKL901",
-                        "status": "pending",
-                        "details": { "influencerAppointmentDetails": { "personal": { "fullName": "Rahul Kumar", "city": "Hyderabad" } } },
-                        "requestedStartAt": "2025-12-22T04:30:00.000Z",
-                        "requestedEndAt": "2025-12-22T06:30:00.000Z",
-                        "requestedTimezone": "Asia/Kolkata",
-                        "scheduledStartAt": null,
-                        "scheduledEndAt": null,
-                        "scheduledTimezone": null,
-                        "location": { "city": "Hyderabad" },
-                        "rejectReason": null,
-                        "adminNotes": null,
-                        "approvedAt": null,
-                        "scheduledAt": null,
-                        "updatedAt": "2025-12-19T09:00:00.000Z"
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "400": { "description": "Bad request", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
-          "401": { "description": "Unauthorized" },
-          "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
-          "409": { "description": "Conflict", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
         }
       }
     },
@@ -7034,14 +6767,6 @@
         },
         "required": ["influencerAppointmentDetails"],
         "additionalProperties": true
-      },
-      "InfluencerPhotoshootRequestCreateResponse": {
-        "type": "object",
-        "properties": {
-          "ok": { "type": "boolean" },
-          "request": { "$ref": "#/components/schemas/InfluencerPhotoshootRequest" }
-        },
-        "required": ["ok", "request"]
       },
       "InfluencerPhotoshootRequestGetResponse": {
         "type": "object",

@@ -35,12 +35,10 @@ router.put('/me/payment-methods/:id/preferred', auth(['influencer']), require('.
 
 // Photoshoots (free studio shoot request + booking)
 const photoshootCtrl = require('../controllers/photoshootController');
-router.post('/me/photoshoots/requests', auth(['influencer']), photoshootCtrl.createMe);
+router.post('/me/photoshoots/requests/submit', auth(['influencer']), photoshootCtrl.submitMe);
 router.get('/me/photoshoots/requests', auth(['influencer']), photoshootCtrl.listMe);
-router.post('/me/photoshoots/requests/book-latest', auth(['influencer']), photoshootCtrl.bookLatestMe);
-router.get('/me/photoshoots/requests/:ulid', auth(['influencer']), photoshootCtrl.getMe);
-router.put('/me/photoshoots/requests/:ulid', auth(['influencer']), photoshootCtrl.updateMe);
-router.post('/me/photoshoots/requests/:ulid/book', auth(['influencer']), photoshootCtrl.bookMe);
+// Convenience: fetch latest request without ULID
+router.get('/me/photoshoots/requests/latest', auth(['influencer']), photoshootCtrl.getLatestMe);
 // Admin badge assignment
 router.put('/:id/badges', auth(['admin', 'superadmin']), ctrl.assignBadge);
 // Influencer ad posts
