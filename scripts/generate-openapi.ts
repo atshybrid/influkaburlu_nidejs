@@ -14,7 +14,7 @@ function jsonResponse(schemaRefOrSchema, example) {
   return { description: 'OK', content };
 }
 
-const openapi = {
+const defaultOpenapi = {
   openapi: '3.0.3',
   info: {
     title: 'Kaburlu Backend API',
@@ -30,15 +30,21 @@ const openapi = {
     { name: 'Ads' },
     { name: 'Applications' },
     { name: 'Influencers' },
+    { name: 'Photoshoots' },
     { name: 'Posts' },
     { name: 'Profile Builder' },
     { name: 'Locations' },
     { name: 'Media' },
     { name: 'Brands' },
+    { name: 'PR' },
     { name: 'Uploads' },
     { name: 'Discovery' },
     { name: 'Categories' },
     { name: 'Bunny' },
+    { name: 'Landing' },
+    { name: 'Admin' },
+    { name: 'Superadmin' },
+    { name: 'DOP' },
   ],
   paths: {
     '/health': {
@@ -955,6 +961,387 @@ const openapi = {
         },
       },
     },
+
+    // DOP endpoints (Director of Photography)
+    '/api/dop/me': {
+      get: {
+        tags: ['DOP'],
+        summary: 'DOP: get my profile',
+        security: bearerAuth,
+        responses: {
+          200: jsonResponse({
+            type: 'object',
+            properties: { ok: { type: 'boolean' }, user: { type: 'object' } },
+            required: ['ok', 'user'],
+          }),
+          401: { description: 'Unauthorized' },
+          403: { description: 'Forbidden' },
+        },
+      },
+      put: {
+        tags: ['DOP'],
+        summary: 'DOP: update my profile',
+        security: bearerAuth,
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  name: { type: 'string' },
+                  email: { type: ['string', 'null'] },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: jsonResponse({
+            type: 'object',
+            properties: { ok: { type: 'boolean' }, user: { type: 'object' } },
+            required: ['ok', 'user'],
+          }),
+          400: { description: 'Bad request', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          401: { description: 'Unauthorized' },
+          403: { description: 'Forbidden' },
+          409: { description: 'Conflict', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        },
+      },
+    },
+    '/api/dop/dashboard': {
+      get: {
+        tags: ['DOP'],
+        summary: 'DOP: dashboard',
+        security: bearerAuth,
+        responses: {
+          200: jsonResponse({
+            type: 'object',
+            properties: {
+              ok: { type: 'boolean' },
+              counts: { type: 'object' },
+              upcoming: { type: 'array', items: { type: 'object' } },
+              recent: { type: 'array', items: { type: 'object' } },
+            },
+            required: ['ok'],
+          }),
+          401: { description: 'Unauthorized' },
+          403: { description: 'Forbidden' },
+        },
+      },
+    },
+    '/api/dop/photoshoots/requests': {
+      get: {
+        tags: ['DOP', 'Photoshoots'],
+        summary: 'DOP: list assigned photoshoot requests',
+        security: bearerAuth,
+        parameters: [
+          { name: 'status', in: 'query', required: false, schema: { type: 'string' } },
+          { name: 'limit', in: 'query', required: false, schema: { type: 'integer', default: 20, minimum: 1, maximum: 100 } },
+          { name: 'offset', in: 'query', required: false, schema: { type: 'integer', default: 0, minimum: 0 } },
+        ],
+        responses: {
+          200: jsonResponse({
+            type: 'object',
+            properties: {
+              total: { type: 'integer' },
+              limit: { type: 'integer' },
+              offset: { type: 'integer' },
+              items: { type: 'array', items: { type: 'object' } },
+            },
+            required: ['total', 'limit', 'offset', 'items'],
+          }),
+          401: { description: 'Unauthorized' },
+          403: { description: 'Forbidden' },
+        },
+      },
+    },
+    '/api/dop/photoshoots/requests/{ulid}': {
+      get: {
+        tags: ['DOP', 'Photoshoots'],
+        summary: 'DOP: get assigned photoshoot request',
+        security: bearerAuth,
+        parameters: [{ name: 'ulid', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: {
+          200: jsonResponse({
+            type: 'object',
+            properties: { ok: { type: 'boolean' }, request: { type: 'object' } },
+            required: ['ok', 'request'],
+          }),
+          401: { description: 'Unauthorized' },
+          403: { description: 'Forbidden' },
+          404: { description: 'Not found', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        },
+      },
+    },
+    '/api/dop/photoshoots/requests/{ulid}/schedule': {
+      put: {
+        tags: ['DOP', 'Photoshoots'],
+        summary: 'DOP: schedule assigned photoshoot',
+        security: bearerAuth,
+        parameters: [{ name: 'ulid', in: 'path', required: true, schema: { type: 'string' } }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  scheduledTimezone: { type: 'string' },
+                  scheduledStartAt: { type: 'string', format: 'date-time' },
+                  scheduledEndAt: { type: 'string', format: 'date-time' },
+                  location: { type: 'object' },
+                },
+                required: ['scheduledTimezone', 'scheduledStartAt', 'scheduledEndAt'],
+              },
+            },
+          },
+        },
+        responses: {
+          200: jsonResponse({
+            type: 'object',
+            properties: { ok: { type: 'boolean' }, request: { type: 'object' } },
+            required: ['ok', 'request'],
+          }),
+          400: { description: 'Bad request', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          401: { description: 'Unauthorized' },
+          403: { description: 'Forbidden' },
+          404: { description: 'Not found', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          409: { description: 'Conflict', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        },
+      },
+    },
+    '/api/dop/photoshoots/requests/{ulid}/raw-media': {
+      post: {
+        tags: ['DOP', 'Photoshoots'],
+        summary: 'DOP: add raw media references',
+        security: bearerAuth,
+        parameters: [{ name: 'ulid', in: 'path', required: true, schema: { type: 'string' } }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  items: {
+                    type: 'array',
+                    items: { oneOf: [{ type: 'string' }, { type: 'object' }] },
+                  },
+                },
+                required: ['items'],
+              },
+            },
+          },
+        },
+        responses: {
+          200: jsonResponse({
+            type: 'object',
+            properties: { ok: { type: 'boolean' }, request: { type: 'object' } },
+            required: ['ok', 'request'],
+          }),
+          400: { description: 'Bad request', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          401: { description: 'Unauthorized' },
+          403: { description: 'Forbidden' },
+          404: { description: 'Not found', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          409: { description: 'Conflict', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        },
+      },
+    },
+    '/api/dop/photoshoots/requests/{ulid}/final-media': {
+      post: {
+        tags: ['DOP', 'Photoshoots'],
+        summary: 'DOP: add final media references',
+        security: bearerAuth,
+        parameters: [{ name: 'ulid', in: 'path', required: true, schema: { type: 'string' } }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  items: {
+                    type: 'array',
+                    items: { oneOf: [{ type: 'string' }, { type: 'object' }] },
+                  },
+                },
+                required: ['items'],
+              },
+            },
+          },
+        },
+        responses: {
+          200: jsonResponse({
+            type: 'object',
+            properties: { ok: { type: 'boolean' }, request: { type: 'object' } },
+            required: ['ok', 'request'],
+          }),
+          400: { description: 'Bad request', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          401: { description: 'Unauthorized' },
+          403: { description: 'Forbidden' },
+          404: { description: 'Not found', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          409: { description: 'Conflict', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        },
+      },
+    },
+    '/api/dop/photoshoots/requests/{ulid}/status': {
+      put: {
+        tags: ['DOP', 'Photoshoots'],
+        summary: 'DOP: set photoshoot request status',
+        security: bearerAuth,
+        parameters: [{ name: 'ulid', in: 'path', required: true, schema: { type: 'string' } }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: { status: { type: 'string' } },
+                required: ['status'],
+              },
+            },
+          },
+        },
+        responses: {
+          200: jsonResponse({
+            type: 'object',
+            properties: { ok: { type: 'boolean' }, request: { type: 'object' } },
+            required: ['ok', 'request'],
+          }),
+          400: { description: 'Bad request', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          401: { description: 'Unauthorized' },
+          403: { description: 'Forbidden' },
+          404: { description: 'Not found', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          409: { description: 'Conflict', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        },
+      },
+    },
+
+    // Superadmin DOP management
+    '/api/superadmin/dops': {
+      post: {
+        tags: ['Superadmin', 'DOP'],
+        summary: 'Superadmin: create DOP user',
+        security: bearerAuth,
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  name: { type: 'string' },
+                  phone: { type: 'string' },
+                  email: { type: ['string', 'null'] },
+                  password: { type: 'string' },
+                  force: { type: 'boolean', description: 'If true, may convert an existing user to role dop' },
+                },
+                required: ['name', 'phone'],
+              },
+            },
+          },
+        },
+        responses: {
+          200: jsonResponse({
+            type: 'object',
+            properties: { ok: { type: 'boolean' }, user: { type: 'object' } },
+            required: ['ok', 'user'],
+          }),
+          400: { description: 'Bad request', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          401: { description: 'Unauthorized' },
+          403: { description: 'Forbidden' },
+          409: { description: 'Conflict', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        },
+      },
+      get: {
+        tags: ['Superadmin', 'DOP'],
+        summary: 'Superadmin: list DOP users',
+        security: bearerAuth,
+        responses: {
+          200: jsonResponse({
+            type: 'object',
+            properties: { ok: { type: 'boolean' }, items: { type: 'array', items: { type: 'object' } } },
+            required: ['ok', 'items'],
+          }),
+          401: { description: 'Unauthorized' },
+          403: { description: 'Forbidden' },
+        },
+      },
+    },
+    '/api/superadmin/dops/{userId}/convert': {
+      put: {
+        tags: ['Superadmin', 'DOP'],
+        summary: 'Superadmin: convert existing user to DOP',
+        security: bearerAuth,
+        parameters: [{ name: 'userId', in: 'path', required: true, schema: { type: 'integer' } }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: { type: 'object', properties: { confirm: { type: 'boolean' } }, required: ['confirm'] },
+            },
+          },
+        },
+        responses: {
+          200: jsonResponse({
+            type: 'object',
+            properties: { ok: { type: 'boolean' }, user: { type: 'object' } },
+            required: ['ok', 'user'],
+          }),
+          400: { description: 'Bad request', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          401: { description: 'Unauthorized' },
+          403: { description: 'Forbidden' },
+          404: { description: 'Not found', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          409: { description: 'Conflict', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        },
+      },
+    },
+
+    // Superadmin photoshoots: assign/unassign DOP
+    '/api/superadmin/photoshoots/requests/{ulid}/assign-dop': {
+      put: {
+        tags: ['Superadmin', 'Photoshoots'],
+        summary: 'Superadmin: assign DOP to photoshoot request',
+        security: bearerAuth,
+        parameters: [{ name: 'ulid', in: 'path', required: true, schema: { type: 'string' } }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: { dopUserId: { type: 'integer' } },
+                required: ['dopUserId'],
+              },
+            },
+          },
+        },
+        responses: {
+          200: jsonResponse({ type: 'object', properties: { ok: { type: 'boolean' }, request: { type: 'object' } }, required: ['ok', 'request'] }),
+          400: { description: 'Bad request', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          401: { description: 'Unauthorized' },
+          403: { description: 'Forbidden' },
+          404: { description: 'Not found', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          409: { description: 'Conflict', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        },
+      },
+    },
+    '/api/superadmin/photoshoots/requests/{ulid}/unassign-dop': {
+      put: {
+        tags: ['Superadmin', 'Photoshoots'],
+        summary: 'Superadmin: unassign DOP from photoshoot request',
+        security: bearerAuth,
+        parameters: [{ name: 'ulid', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: {
+          200: jsonResponse({ type: 'object', properties: { ok: { type: 'boolean' }, request: { type: 'object' } }, required: ['ok', 'request'] }),
+          401: { description: 'Unauthorized' },
+          403: { description: 'Forbidden' },
+          404: { description: 'Not found', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          409: { description: 'Conflict', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        },
+      },
+    },
   },
   components: {
     securitySchemes: {
@@ -1360,6 +1747,47 @@ const openapi = {
   },
 };
 
+function ensureTag(doc, name) {
+  if (!doc.tags) doc.tags = [];
+  const has = doc.tags.some((t) => (typeof t === 'string' ? t === name : t && t.name === name));
+  if (!has) doc.tags.push({ name });
+}
+
+function ensurePath(doc, pathKey, pathItem) {
+  if (!doc.paths) doc.paths = {};
+  if (!doc.paths[pathKey]) doc.paths[pathKey] = pathItem;
+}
+
+function ensureDopOpenApi(doc) {
+  ensureTag(doc, 'DOP');
+  ensureTag(doc, 'Superadmin');
+  ensureTag(doc, 'Photoshoots');
+  ensurePath(doc, '/api/dop/me', defaultOpenapi.paths['/api/dop/me']);
+  ensurePath(doc, '/api/dop/dashboard', defaultOpenapi.paths['/api/dop/dashboard']);
+  ensurePath(doc, '/api/dop/photoshoots/requests', defaultOpenapi.paths['/api/dop/photoshoots/requests']);
+  ensurePath(doc, '/api/dop/photoshoots/requests/{ulid}', defaultOpenapi.paths['/api/dop/photoshoots/requests/{ulid}']);
+  ensurePath(doc, '/api/dop/photoshoots/requests/{ulid}/schedule', defaultOpenapi.paths['/api/dop/photoshoots/requests/{ulid}/schedule']);
+  ensurePath(doc, '/api/dop/photoshoots/requests/{ulid}/raw-media', defaultOpenapi.paths['/api/dop/photoshoots/requests/{ulid}/raw-media']);
+  ensurePath(doc, '/api/dop/photoshoots/requests/{ulid}/final-media', defaultOpenapi.paths['/api/dop/photoshoots/requests/{ulid}/final-media']);
+  ensurePath(doc, '/api/dop/photoshoots/requests/{ulid}/status', defaultOpenapi.paths['/api/dop/photoshoots/requests/{ulid}/status']);
+  ensurePath(doc, '/api/superadmin/dops', defaultOpenapi.paths['/api/superadmin/dops']);
+  ensurePath(doc, '/api/superadmin/dops/{userId}/convert', defaultOpenapi.paths['/api/superadmin/dops/{userId}/convert']);
+  ensurePath(doc, '/api/superadmin/photoshoots/requests/{ulid}/assign-dop', defaultOpenapi.paths['/api/superadmin/photoshoots/requests/{ulid}/assign-dop']);
+  ensurePath(doc, '/api/superadmin/photoshoots/requests/{ulid}/unassign-dop', defaultOpenapi.paths['/api/superadmin/photoshoots/requests/{ulid}/unassign-dop']);
+}
+
 const outPath = path.join(__dirname, '..', 'src', 'openapi.json');
+let openapi = defaultOpenapi;
+try {
+  const existingRaw = fs.readFileSync(outPath, 'utf8');
+  const existing = JSON.parse(existingRaw);
+  if (existing && typeof existing === 'object' && existing.openapi && existing.paths) {
+    openapi = existing;
+  }
+} catch (_) {
+  // ignore
+}
+
+ensureDopOpenApi(openapi);
 fs.writeFileSync(outPath, JSON.stringify(openapi, null, 2) + '\n', 'utf8');
 console.log('Wrote', outPath);

@@ -345,6 +345,20 @@ async function ensurePhotoshootRequestsTable() {
 			await sequelize.query('CREATE INDEX IF NOT EXISTS "PhotoshootRequests_status_idx" ON "PhotoshootRequests"("status")');
 		} catch (_) {}
 	}
+
+	// Schema evolution: add DOP fields if missing (best-effort)
+	try {
+		await sequelize.query('ALTER TABLE "PhotoshootRequests" ADD COLUMN IF NOT EXISTS "dopUserId" INTEGER');
+		await sequelize.query('ALTER TABLE "PhotoshootRequests" ADD COLUMN IF NOT EXISTS "dopAssignedByUserId" INTEGER');
+		await sequelize.query('ALTER TABLE "PhotoshootRequests" ADD COLUMN IF NOT EXISTS "dopAssignedAt" TIMESTAMP WITH TIME ZONE');
+		await sequelize.query('ALTER TABLE "PhotoshootRequests" ADD COLUMN IF NOT EXISTS "rawMedia" JSONB DEFAULT \'[]\'::jsonb');
+		await sequelize.query('ALTER TABLE "PhotoshootRequests" ADD COLUMN IF NOT EXISTS "finalMedia" JSONB DEFAULT \'[]\'::jsonb');
+		await sequelize.query('ALTER TABLE "PhotoshootRequests" ADD COLUMN IF NOT EXISTS "rawUploadedByUserId" INTEGER');
+		await sequelize.query('ALTER TABLE "PhotoshootRequests" ADD COLUMN IF NOT EXISTS "rawUploadedAt" TIMESTAMP WITH TIME ZONE');
+		await sequelize.query('ALTER TABLE "PhotoshootRequests" ADD COLUMN IF NOT EXISTS "finalUploadedByUserId" INTEGER');
+		await sequelize.query('ALTER TABLE "PhotoshootRequests" ADD COLUMN IF NOT EXISTS "finalUploadedAt" TIMESTAMP WITH TIME ZONE');
+		await sequelize.query('CREATE INDEX IF NOT EXISTS "PhotoshootRequests_dopUserId_idx" ON "PhotoshootRequests"("dopUserId")');
+	} catch (_) {}
 }
 
 ensurePhotoshootRequestsTable().catch(() => {});

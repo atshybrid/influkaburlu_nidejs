@@ -14,6 +14,7 @@ const discovery = require('./discovery');
 const categories = require('./categories');
 const seo = require('./seo');
 const pr = require('./pr');
+const dop = require('./dop');
 const bunnyCtrl = require('../controllers/bunnyController');
 const kycCtrl = require('../controllers/kycController');
 const payCtrl = require('../controllers/paymentController');
@@ -38,6 +39,7 @@ router.use('/discovery', discovery);
 router.use('/categories', categories);
 router.use('/seo', seo);
 router.use('/pr', pr);
+router.use('/dop', dop);
 
 // Public landing page
 router.get('/public/influencers', influencerCtrl.publicLandingList);
@@ -74,6 +76,11 @@ router.get('/superadmin/dashboard', requireAuth(['superadmin']), superadminCtrl.
 router.post('/superadmin/prs', requireAuth(['superadmin']), superadminCtrl.createPrUser);
 router.post('/superadmin/brands/:brandUlid/pr', requireAuth(['superadmin']), superadminCtrl.assignPrToBrand);
 
+// Superadmin: DOP management
+router.post('/superadmin/dops', requireAuth(['superadmin']), superadminCtrl.createDopUser);
+router.get('/superadmin/dops', requireAuth(['superadmin']), superadminCtrl.listDops);
+router.put('/superadmin/dops/:userId/convert', requireAuth(['superadmin']), superadminCtrl.convertUserToDop);
+
 // Superadmin: PR commission admin
 router.get('/superadmin/pr-commissions', requireAuth(['superadmin']), superadminCtrl.listPrCommissions);
 router.put('/superadmin/pr-commissions/:id/paid', requireAuth(['superadmin']), superadminCtrl.markPrCommissionPaid);
@@ -88,6 +95,8 @@ router.get('/superadmin/photoshoots/requests/:ulid', requireAuth(['superadmin'])
 router.put('/superadmin/photoshoots/requests/:ulid/approve', requireAuth(['superadmin']), photoshootCtrl.adminApprove);
 router.put('/superadmin/photoshoots/requests/:ulid/reject', requireAuth(['superadmin']), photoshootCtrl.adminReject);
 router.put('/superadmin/photoshoots/requests/:ulid/schedule', requireAuth(['superadmin']), photoshootCtrl.adminSchedule);
+router.put('/superadmin/photoshoots/requests/:ulid/assign-dop', requireAuth(['superadmin']), photoshootCtrl.adminAssignDop);
+router.put('/superadmin/photoshoots/requests/:ulid/unassign-dop', requireAuth(['superadmin']), photoshootCtrl.adminUnassignDop);
 
 // Admin: SEO management
 router.put('/admin/seo/influencer/:id', requireAuth(['admin', 'superadmin']), seoCtrl.adminUpsertInfluencerSeo);

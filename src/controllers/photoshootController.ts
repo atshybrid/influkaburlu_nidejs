@@ -2,6 +2,48 @@ const { PhotoshootRequest, Influencer, User } = require('../models');
 const { Op } = require('sequelize');
 const whatsappPhotoshoot = require('../services/sendWhatsappPhotoshoot');
 
+function asIsoDate(value) {
+  if (!isNonEmptyString(value)) return null;
+  const d = new Date(String(value));
+  if (Number.isNaN(d.getTime())) return null;
+  return d;
+}
+
+function ensureAssignedToMe(row, req) {
+  const userId = req.user?.id;
+  if (!userId) {
+    const err = new Error('Unauthorized');
+    // @ts-ignore
+    err.statusCode = 401;
+    throw err;
+  }
+  if (row?.dopUserId !== userId) {
+    const err = new Error('forbidden_not_assigned');
+    // @ts-ignore
+    err.statusCode = 403;
+    throw err;
+  }
+}
+
+function normalizeMediaItems(items) {
+  if (!Array.isArray(items) || items.length === 0) return null;
+  const out = [];
+  for (const it of items) {
+    if (typeof it === 'string') {
+      const url = normalizeString(it);
+      if (url) out.push({ url });
+      continue;
+    }
+    if (!it || typeof it !== 'object') continue;
+    const url = normalizeString(it.url);
+    if (!url) continue;
+    const kind = normalizeString(it.kind);
+    const meta = it.meta && typeof it.meta === 'object' ? it.meta : undefined;
+    out.push({ url, ...(kind ? { kind } : {}), ...(meta ? { meta } : {}) });
+  }
+  return out.length ? out : null;
+}
+
 function maskPhoneForLog(phone) {
   const digits = String(phone || '').replace(/\D/g, '');
   if (!digits) return null;
@@ -387,7 +429,8 @@ exports.createMe = async (req, res) => {
             req,
             phone,
             influencerName: user?.name || influencer?.handle || 'Creator',
-            requestUlid: row.ulid
+            requestUlid: row.ulid,
+            requestDetails: row.details,
           });
         }
       }
@@ -477,6 +520,7 @@ exports.submitMe = async (req, res) => {
             phone,
             influencerName: user?.name || influencer?.handle || 'Creator',
             requestUlid: row.ulid,
+            requestDetails: row.details,
           });
         }
       }
@@ -872,6 +916,8 @@ exports.adminGet = async (req, res) => {
       request: {
         ulid: row.ulid,
         status: row.status,
+        dopUserId: row.dopUserId || null,
+        dopAssignedAt: row.dopAssignedAt || null,
         influencer: influencer
           ? {
               id: influencer.id,
@@ -893,6 +939,12 @@ exports.adminGet = async (req, res) => {
         scheduledEndAt: row.scheduledEndAt,
         scheduledTimezone: row.scheduledTimezone,
         location: row.location || {},
+        rawMedia: Array.isArray(row.rawMedia) ? row.rawMedia : [],
+        finalMedia: Array.isArray(row.finalMedia) ? row.finalMedia : [],
+        rawUploadedAt: row.rawUploadedAt || null,
+        rawUploadedByUserId: row.rawUploadedByUserId || null,
+        finalUploadedAt: row.finalUploadedAt || null,
+        finalUploadedByUserId: row.finalUploadedByUserId || null,
         rejectReason: row.rejectReason || null,
         adminNotes: row.adminNotes || null,
         approvedAt: row.approvedAt || null,
@@ -1016,7 +1068,8 @@ exports.adminSchedule = async (req, res) => {
               requestUlid: row.ulid,
               scheduledStartAt: row.scheduledStartAt,
               scheduledEndAt: row.scheduledEndAt,
-              scheduledTimezone: row.scheduledTimezone
+              scheduledTimezone: row.scheduledTimezone,
+              requestDetails: row.details,
             });
           }
         }
@@ -1038,6 +1091,338 @@ exports.adminSchedule = async (req, res) => {
       },
     });
   } catch (err) {
+    return res.status(500).json({ error: 'server_error', details: err.message });
+  }
+};
+
+// Superadmin: assign a DOP (Director of Photography) user to a request
+exports.adminAssignDop = async (req, res) => {
+  try {
+    const ulid = String(req.params.ulid || '');
+    if (!ulid) return res.status(400).json({ error: 'ulid_required' });
+
+    const { dopUserId } = req.body || {};
+    const dopId = typeof dopUserId === 'number' ? dopUserId : parseInt(String(dopUserId || ''), 10);
+    if (!Number.isFinite(dopId) || dopId <= 0) return res.status(400).json({ error: 'dopUserId_required' });
+
+    const row = await PhotoshootRequest.findOne({ where: { ulid } });
+    if (!row) return res.status(404).json({ error: 'not_found' });
+    if (String(row.status) === 'rejected') return res.status(409).json({ error: 'cannot_assign_in_status', status: row.status });
+
+    const dopUser = await User.findByPk(dopId);
+    if (!dopUser) return res.status(404).json({ error: 'dop_user_not_found' });
+    if (String(dopUser.role) !== 'dop') {
+      return res.status(409).json({ error: 'user_not_dop_role', userRole: dopUser.role });
+    }
+
+    row.dopUserId = dopId;
+    row.dopAssignedByUserId = req.user?.id || null;
+    row.dopAssignedAt = new Date();
+    await row.save();
+
+    return res.json({
+      ok: true,
+      request: {
+        ulid: row.ulid,
+        status: row.status,
+        dopUserId: row.dopUserId,
+        dopAssignedAt: row.dopAssignedAt,
+      },
+    });
+  } catch (err) {
+    return res.status(500).json({ error: 'server_error', details: err.message });
+  }
+};
+
+// Superadmin: unassign DOP from a request
+exports.adminUnassignDop = async (req, res) => {
+  try {
+    const ulid = String(req.params.ulid || '');
+    if (!ulid) return res.status(400).json({ error: 'ulid_required' });
+
+    const row = await PhotoshootRequest.findOne({ where: { ulid } });
+    if (!row) return res.status(404).json({ error: 'not_found' });
+
+    row.dopUserId = null;
+    row.dopAssignedByUserId = req.user?.id || null;
+    row.dopAssignedAt = new Date();
+    await row.save();
+
+    return res.json({
+      ok: true,
+      request: {
+        ulid: row.ulid,
+        status: row.status,
+        dopUserId: row.dopUserId,
+        dopAssignedAt: row.dopAssignedAt,
+      },
+    });
+  } catch (err) {
+    return res.status(500).json({ error: 'server_error', details: err.message });
+  }
+};
+
+// DOP: list assigned photoshoot requests
+exports.dopList = async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+    const status = isNonEmptyString(req.query?.status) ? String(req.query.status) : null;
+    const where: any = { dopUserId: userId };
+    if (status) where.status = status;
+
+    const rows = await PhotoshootRequest.findAll({
+      where,
+      order: [['updatedAt', 'DESC']],
+    });
+
+    return res.json({
+      ok: true,
+      requests: rows.map((r) => ({
+        ulid: r.ulid,
+        status: r.status,
+        influencerId: r.influencerId,
+        scheduledStartAt: r.scheduledStartAt,
+        scheduledEndAt: r.scheduledEndAt,
+        scheduledTimezone: r.scheduledTimezone,
+        location: r.location || {},
+        dopUserId: r.dopUserId || null,
+        dopAssignedAt: r.dopAssignedAt || null,
+        rawMediaCount: Array.isArray(r.rawMedia) ? r.rawMedia.length : 0,
+        finalMediaCount: Array.isArray(r.finalMedia) ? r.finalMedia.length : 0,
+        updatedAt: r.updatedAt,
+        createdAt: r.createdAt,
+      })),
+    });
+  } catch (err) {
+    return res.status(500).json({ error: 'server_error', details: err.message });
+  }
+};
+
+// DOP: get one assigned request
+exports.dopGet = async (req, res) => {
+  try {
+    const ulid = String(req.params.ulid || '');
+    if (!ulid) return res.status(400).json({ error: 'ulid_required' });
+
+    const row = await PhotoshootRequest.findOne({ where: { ulid } });
+    if (!row) return res.status(404).json({ error: 'not_found' });
+    ensureAssignedToMe(row, req);
+
+    return res.json({
+      ok: true,
+      request: {
+        ulid: row.ulid,
+        status: row.status,
+        influencerId: row.influencerId,
+        details: row.details,
+        requestedStartAt: row.requestedStartAt,
+        requestedEndAt: row.requestedEndAt,
+        requestedTimezone: row.requestedTimezone,
+        scheduledStartAt: row.scheduledStartAt,
+        scheduledEndAt: row.scheduledEndAt,
+        scheduledTimezone: row.scheduledTimezone,
+        location: row.location || {},
+        dopUserId: row.dopUserId || null,
+        dopAssignedAt: row.dopAssignedAt || null,
+        rawMedia: Array.isArray(row.rawMedia) ? row.rawMedia : [],
+        finalMedia: Array.isArray(row.finalMedia) ? row.finalMedia : [],
+        rawUploadedAt: row.rawUploadedAt || null,
+        finalUploadedAt: row.finalUploadedAt || null,
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
+      },
+    });
+  } catch (err) {
+    const code = err?.statusCode || 500;
+    if (code !== 500) return res.status(code).json({ error: err.message });
+    return res.status(500).json({ error: 'server_error', details: err.message });
+  }
+};
+
+// DOP: schedule (or reschedule) an assigned request
+exports.dopSchedule = async (req, res) => {
+  try {
+    const ulid = String(req.params.ulid || '');
+    if (!ulid) return res.status(400).json({ error: 'ulid_required' });
+
+    const { scheduledStartAt, scheduledEndAt, scheduledTimezone, location, notes } = req.body || {};
+    if (!isNonEmptyString(scheduledStartAt)) return res.status(400).json({ error: 'scheduledStartAt_required' });
+    if (!isNonEmptyString(scheduledEndAt)) return res.status(400).json({ error: 'scheduledEndAt_required' });
+
+    const start = asIsoDate(scheduledStartAt);
+    const end = asIsoDate(scheduledEndAt);
+    if (!start || !end) return res.status(400).json({ error: 'invalid_datetime' });
+    if (end <= start) return res.status(400).json({ error: 'end_must_be_after_start' });
+
+    const row = await PhotoshootRequest.findOne({ where: { ulid } });
+    if (!row) return res.status(404).json({ error: 'not_found' });
+    ensureAssignedToMe(row, req);
+
+    if (!['approved', 'scheduled'].includes(String(row.status))) {
+      return res.status(409).json({ error: 'cannot_schedule_in_status', status: row.status });
+    }
+
+    row.status = 'scheduled';
+    row.scheduledStartAt = start;
+    row.scheduledEndAt = end;
+    row.scheduledTimezone = isNonEmptyString(scheduledTimezone) ? String(scheduledTimezone) : null;
+    if (location && typeof location === 'object') row.location = location;
+    if (isNonEmptyString(notes)) row.adminNotes = String(notes);
+    row.scheduledByUserId = req.user?.id || null;
+    row.scheduledAt = new Date();
+    await row.save();
+
+    return res.json({
+      ok: true,
+      request: {
+        ulid: row.ulid,
+        status: row.status,
+        scheduledStartAt: row.scheduledStartAt,
+        scheduledEndAt: row.scheduledEndAt,
+        scheduledTimezone: row.scheduledTimezone,
+        location: row.location || {},
+        scheduledAt: row.scheduledAt,
+      },
+    });
+  } catch (err) {
+    const code = err?.statusCode || 500;
+    if (code !== 500) return res.status(code).json({ error: err.message });
+    return res.status(500).json({ error: 'server_error', details: err.message });
+  }
+};
+
+// DOP: add raw media URLs
+exports.dopAddRawMedia = async (req, res) => {
+  try {
+    const ulid = String(req.params.ulid || '');
+    if (!ulid) return res.status(400).json({ error: 'ulid_required' });
+
+    const { items } = req.body || {};
+    const normalized = normalizeMediaItems(items);
+    if (!normalized) return res.status(400).json({ error: 'items_required' });
+
+    const row = await PhotoshootRequest.findOne({ where: { ulid } });
+    if (!row) return res.status(404).json({ error: 'not_found' });
+    ensureAssignedToMe(row, req);
+
+    if (!['scheduled', 'shoot_done', 'raw_uploaded'].includes(String(row.status))) {
+      return res.status(409).json({ error: 'cannot_upload_raw_in_status', status: row.status });
+    }
+
+    const now = new Date();
+    const withMeta = normalized.map((x) => ({
+      ...x,
+      addedAt: now.toISOString(),
+      addedByUserId: req.user?.id || null,
+    }));
+
+    const current = Array.isArray(row.rawMedia) ? row.rawMedia : [];
+    row.rawMedia = current.concat(withMeta);
+    row.status = 'raw_uploaded';
+    row.rawUploadedAt = now;
+    row.rawUploadedByUserId = req.user?.id || null;
+    await row.save();
+
+    return res.json({
+      ok: true,
+      request: {
+        ulid: row.ulid,
+        status: row.status,
+        rawMediaCount: Array.isArray(row.rawMedia) ? row.rawMedia.length : 0,
+        rawUploadedAt: row.rawUploadedAt,
+      },
+    });
+  } catch (err) {
+    const code = err?.statusCode || 500;
+    if (code !== 500) return res.status(code).json({ error: err.message });
+    return res.status(500).json({ error: 'server_error', details: err.message });
+  }
+};
+
+// DOP: add final media URLs
+exports.dopAddFinalMedia = async (req, res) => {
+  try {
+    const ulid = String(req.params.ulid || '');
+    if (!ulid) return res.status(400).json({ error: 'ulid_required' });
+
+    const { items } = req.body || {};
+    const normalized = normalizeMediaItems(items);
+    if (!normalized) return res.status(400).json({ error: 'items_required' });
+
+    const row = await PhotoshootRequest.findOne({ where: { ulid } });
+    if (!row) return res.status(404).json({ error: 'not_found' });
+    ensureAssignedToMe(row, req);
+
+    if (!['raw_uploaded', 'final_uploaded'].includes(String(row.status))) {
+      return res.status(409).json({ error: 'cannot_upload_final_in_status', status: row.status });
+    }
+
+    const now = new Date();
+    const withMeta = normalized.map((x) => ({
+      ...x,
+      addedAt: now.toISOString(),
+      addedByUserId: req.user?.id || null,
+    }));
+
+    const current = Array.isArray(row.finalMedia) ? row.finalMedia : [];
+    row.finalMedia = current.concat(withMeta);
+    row.status = 'final_uploaded';
+    row.finalUploadedAt = now;
+    row.finalUploadedByUserId = req.user?.id || null;
+    await row.save();
+
+    return res.json({
+      ok: true,
+      request: {
+        ulid: row.ulid,
+        status: row.status,
+        finalMediaCount: Array.isArray(row.finalMedia) ? row.finalMedia.length : 0,
+        finalUploadedAt: row.finalUploadedAt,
+      },
+    });
+  } catch (err) {
+    const code = err?.statusCode || 500;
+    if (code !== 500) return res.status(code).json({ error: err.message });
+    return res.status(500).json({ error: 'server_error', details: err.message });
+  }
+};
+
+// DOP: explicit status update for assigned request
+exports.dopSetStatus = async (req, res) => {
+  try {
+    const ulid = String(req.params.ulid || '');
+    if (!ulid) return res.status(400).json({ error: 'ulid_required' });
+    const { status } = req.body || {};
+    if (!isNonEmptyString(status)) return res.status(400).json({ error: 'status_required' });
+    const next = String(status);
+
+    const allowed = ['shoot_done', 'completed'];
+    if (!allowed.includes(next)) return res.status(400).json({ error: 'status_invalid', allowed });
+
+    const row = await PhotoshootRequest.findOne({ where: { ulid } });
+    if (!row) return res.status(404).json({ error: 'not_found' });
+    ensureAssignedToMe(row, req);
+
+    if (next === 'shoot_done') {
+      if (!['scheduled', 'raw_uploaded'].includes(String(row.status))) {
+        return res.status(409).json({ error: 'cannot_set_shoot_done_in_status', status: row.status });
+      }
+    }
+    if (next === 'completed') {
+      if (!['final_uploaded'].includes(String(row.status))) {
+        return res.status(409).json({ error: 'cannot_complete_in_status', status: row.status });
+      }
+    }
+
+    row.status = next;
+    await row.save();
+
+    return res.json({ ok: true, request: { ulid: row.ulid, status: row.status, updatedAt: row.updatedAt } });
+  } catch (err) {
+    const code = err?.statusCode || 500;
+    if (code !== 500) return res.status(code).json({ error: err.message });
     return res.status(500).json({ error: 'server_error', details: err.message });
   }
 };

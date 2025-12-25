@@ -6,6 +6,19 @@ module.exports = (sequelize, DataTypes) => {
       status: { type: DataTypes.STRING(32), allowNull: false, defaultValue: 'pending' },
       details: { type: DataTypes.JSONB, allowNull: false, defaultValue: {} },
 
+      dopUserId: { type: DataTypes.INTEGER, allowNull: true },
+      dopAssignedByUserId: { type: DataTypes.INTEGER, allowNull: true },
+      dopAssignedAt: { type: DataTypes.DATE, allowNull: true },
+
+      rawMedia: { type: DataTypes.JSONB, allowNull: false, defaultValue: [] },
+      finalMedia: { type: DataTypes.JSONB, allowNull: false, defaultValue: [] },
+
+      rawUploadedByUserId: { type: DataTypes.INTEGER, allowNull: true },
+      rawUploadedAt: { type: DataTypes.DATE, allowNull: true },
+
+      finalUploadedByUserId: { type: DataTypes.INTEGER, allowNull: true },
+      finalUploadedAt: { type: DataTypes.DATE, allowNull: true },
+
       requestedStartAt: { type: DataTypes.DATE, allowNull: true },
       requestedEndAt: { type: DataTypes.DATE, allowNull: true },
       requestedTimezone: { type: DataTypes.STRING(64), allowNull: true },

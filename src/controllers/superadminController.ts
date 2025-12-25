@@ -251,6 +251,166 @@ exports.assignPrToBrand = async (req, res) => {
   }
 };
 
+// Superadmin: create a DOP user (Director of Photography)
+exports.createDopUser = async (req, res) => {
+  try {
+    const { name, phone, email, password, force } = req.body || {};
+    if (!phone) return res.status(400).json({ error: 'phone_required' });
+    if (!password) return res.status(400).json({ error: 'password_required' });
+
+    // Optional: track as a system role entry, like PR
+    try {
+      await ensureRole('dop', 'DOP', 'Director of Photography');
+    } catch (_) {
+      // ignore if Roles table isn't ready
+    }
+
+    let user = await User.findOne({ where: { phone: String(phone) } });
+    if (!user && email) {
+      const existingEmail = await User.findOne({ where: { email: String(email) } });
+      if (existingEmail) return res.status(409).json({ error: 'email_in_use' });
+    }
+
+    if (user) {
+      // If user already exists, do NOT overwrite credentials.
+      // Also avoid accidental role changes unless explicitly forced.
+      if (String(user.role) !== 'dop' && force !== true) {
+        return res.status(409).json({
+          error: 'user_exists_with_role',
+          message: 'User with this phone already exists. Pass { force: true } to convert to dop role.',
+          existingRole: user.role,
+          userId: user.id,
+        });
+      }
+
+      if (String(user.role) !== 'dop') {
+        user.role = 'dop';
+      }
+      if (!user.name && name) user.name = String(name);
+      if (!user.email && email) user.email = String(email);
+      await user.save();
+    } else {
+      const passwordHash = await bcrypt.hash(String(password), 10);
+      let newUlid = null;
+      try {
+        const { ulid } = require('ulid');
+        newUlid = ulid();
+      } catch (_) {}
+      user = await User.create({
+        ulid: newUlid,
+        name: name || 'DOP',
+        phone: String(phone),
+        email: email || null,
+        passwordHash,
+        role: 'dop',
+      });
+    }
+
+    return res.json({
+      ok: true,
+      dop: {
+        id: user.id,
+        ulid: user.ulid || null,
+        name: user.name || null,
+        phone: user.phone || null,
+        email: user.email || null,
+        role: user.role,
+      },
+    });
+  } catch (err) {
+    return res.status(500).json({ error: 'server_error', details: err.message });
+  }
+};
+
+// Superadmin: list DOP users
+exports.listDops = async (req, res) => {
+  try {
+    const limit = Math.min(Math.max(parseInt(req.query.limit || '50', 10) || 50, 1), 200);
+    const offset = Math.max(parseInt(req.query.offset || '0', 10) || 0, 0);
+    const q = String(req.query.q || '').trim();
+
+    const where: any = { role: 'dop' };
+    if (q) {
+      where[Op.or] = [
+        { name: { [Op.iLike]: `%${q}%` } },
+        { phone: { [Op.iLike]: `%${q}%` } },
+        { email: { [Op.iLike]: `%${q}%` } },
+      ];
+    }
+
+    const total = await User.count({ where });
+    const rows = await User.findAll({ where, order: [['createdAt', 'DESC']], limit, offset });
+
+    return res.json({
+      ok: true,
+      total,
+      limit,
+      offset,
+      items: rows.map((u) => ({
+        id: u.id,
+        ulid: u.ulid || null,
+        name: u.name || null,
+        phone: u.phone || null,
+        email: u.email || null,
+        createdAt: u.createdAt,
+      })),
+    });
+  } catch (err) {
+    return res.status(500).json({ error: 'server_error', details: err.message });
+  }
+};
+
+// Superadmin: convert an existing user to DOP by userId (explicit target, no credential changes)
+exports.convertUserToDop = async (req, res) => {
+  try {
+    const userId = parseInt(String(req.params.userId || ''), 10);
+    if (!Number.isFinite(userId) || userId <= 0) return res.status(400).json({ error: 'invalid_userId' });
+
+    const { confirm, name, email } = req.body || {};
+    if (confirm !== true) {
+      return res.status(400).json({ error: 'confirm_required', hint: 'Pass { confirm: true } to proceed.' });
+    }
+
+    const user = await User.findByPk(userId);
+    if (!user) return res.status(404).json({ error: 'user_not_found' });
+
+    // Optional: track as a system role entry
+    try {
+      await ensureRole('dop', 'DOP', 'Director of Photography');
+    } catch (_) {}
+
+    if (email !== undefined && email !== null && String(email).trim()) {
+      const nextEmail = String(email).trim();
+      if (nextEmail !== user.email) {
+        const existing = await User.findOne({ where: { email: nextEmail, id: { [Op.ne]: user.id } } });
+        if (existing) return res.status(409).json({ error: 'email_in_use' });
+      }
+      user.email = nextEmail;
+    }
+    if (name !== undefined && name !== null && String(name).trim()) {
+      user.name = String(name).trim();
+    }
+
+    user.role = 'dop';
+    await user.save();
+
+    return res.json({
+      ok: true,
+      dop: {
+        id: user.id,
+        ulid: user.ulid || null,
+        name: user.name || null,
+        phone: user.phone || null,
+        email: user.email || null,
+        role: user.role,
+        updatedAt: user.updatedAt,
+      },
+    });
+  } catch (err) {
+    return res.status(500).json({ error: 'server_error', details: err.message });
+  }
+};
+
 // Superadmin: list PR commissions
 exports.listPrCommissions = async (req, res) => {
   try {
