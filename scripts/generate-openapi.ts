@@ -32,6 +32,7 @@ const defaultOpenapi = {
     { name: 'Influencers' },
     { name: 'Photoshoots' },
     { name: 'Posts' },
+    { name: 'Public Feed', description: 'Public API for mobile app video swipe feed' },
     { name: 'Profile Builder' },
     { name: 'Locations' },
     { name: 'Media' },
@@ -693,6 +694,57 @@ const defaultOpenapi = {
         },
         responses: {
           200: jsonResponse('#/components/schemas/BunnyCreateResponse'),
+        },
+      },
+    },
+
+    // Public Feed (Mobile App Video Swipe API)
+    '/api/public/feed/videos': {
+      get: {
+        tags: ['Public Feed'],
+        summary: 'Get video feed for mobile swipe-to-next UX',
+        description: 'Public paginated video feed optimized for mobile apps with cursor-based pagination, filtering, and prefetch hints.',
+        security: [],
+        parameters: [
+          { name: 'cursor', in: 'query', description: 'Base64 encoded cursor for pagination', schema: { type: 'string' } },
+          { name: 'limit', in: 'query', description: 'Items per page (1-50)', schema: { type: 'integer', default: 10, minimum: 1, maximum: 50 } },
+          { name: 'category', in: 'query', description: 'Filter by category code', schema: { type: 'string' } },
+          { name: 'language', in: 'query', description: 'Filter by language code', schema: { type: 'string' } },
+          { name: 'state', in: 'query', description: 'Filter by state code', schema: { type: 'string' } },
+          { name: 'shuffle', in: 'query', description: 'Set to "true" for randomized feed', schema: { type: 'string', enum: ['true', 'false'], default: 'false' } },
+        ],
+        responses: {
+          200: jsonResponse('#/components/schemas/VideoFeedResponse'),
+        },
+      },
+    },
+    '/api/public/feed/videos/{videoId}': {
+      get: {
+        tags: ['Public Feed'],
+        summary: 'Get single video by ULID',
+        description: 'Retrieve video details for deep linking or sharing.',
+        security: [],
+        parameters: [{ name: 'videoId', in: 'path', required: true, description: 'Video ULID', schema: { type: 'string' } }],
+        responses: {
+          200: jsonResponse('#/components/schemas/VideoFeedItem'),
+          404: { description: 'Video not found' },
+        },
+      },
+    },
+    '/api/public/feed/influencers/{influencerId}/videos': {
+      get: {
+        tags: ['Public Feed'],
+        summary: 'Get all videos from a specific influencer',
+        description: 'Paginated video list for viewing an influencer profile/portfolio.',
+        security: [],
+        parameters: [
+          { name: 'influencerId', in: 'path', required: true, description: 'Influencer ULID', schema: { type: 'string' } },
+          { name: 'cursor', in: 'query', description: 'Base64 encoded cursor for pagination', schema: { type: 'string' } },
+          { name: 'limit', in: 'query', description: 'Items per page (1-50)', schema: { type: 'integer', default: 10, minimum: 1, maximum: 50 } },
+        ],
+        responses: {
+          200: jsonResponse('#/components/schemas/InfluencerVideoFeedResponse'),
+          404: { description: 'Influencer not found' },
         },
       },
     },
@@ -1741,6 +1793,76 @@ const defaultOpenapi = {
           handle: { type: 'string' },
           profilePicUrl: { type: 'string' },
           score: { type: 'number' },
+        },
+      },
+
+      // Public Feed schemas (Mobile App Video Swipe API)
+      VideoFeedInfluencer: {
+        type: 'object',
+        properties: {
+          id: { type: 'string', description: 'Influencer ULID' },
+          name: { type: 'string' },
+          handle: { type: 'string' },
+          handleDisplay: { type: 'string', description: 'Handle with @ prefix' },
+          profilePicUrl: { type: 'string' },
+          verified: { type: 'boolean' },
+          badgeName: { type: 'string' },
+          bio: { type: 'string' },
+          followers: { type: 'object' },
+        },
+      },
+      VideoMetrics: {
+        type: 'object',
+        properties: {
+          likes: { type: 'integer', default: 0 },
+          comments: { type: 'integer', default: 0 },
+          saves: { type: 'integer', default: 0 },
+          views: { type: 'integer', default: 0 },
+        },
+      },
+      VideoFeedItem: {
+        type: 'object',
+        properties: {
+          videoId: { type: 'string', description: 'Video ULID' },
+          videoGuid: { type: 'string', description: 'Bunny Stream GUID' },
+          videoUrl: { type: 'string', description: 'Playback URL' },
+          thumbnailUrl: { type: 'string' },
+          durationSec: { type: 'number' },
+          postId: { type: 'string', description: 'Post ULID' },
+          caption: { type: 'string' },
+          language: { type: 'string' },
+          categories: { type: 'array', items: { type: 'string' } },
+          states: { type: 'array', items: { type: 'string' } },
+          metrics: { $ref: '#/components/schemas/VideoMetrics' },
+          influencer: { $ref: '#/components/schemas/VideoFeedInfluencer' },
+          createdAt: { type: 'string', format: 'date-time' },
+        },
+      },
+      VideoFeedPrefetch: {
+        type: 'object',
+        properties: {
+          videoUrl: { type: 'string' },
+          thumbnailUrl: { type: 'string' },
+        },
+      },
+      VideoFeedResponse: {
+        type: 'object',
+        properties: {
+          items: { type: 'array', items: { $ref: '#/components/schemas/VideoFeedItem' } },
+          nextCursor: { type: 'string', description: 'Base64 cursor for next page, null if no more' },
+          hasMore: { type: 'boolean' },
+          prefetch: { $ref: '#/components/schemas/VideoFeedPrefetch', description: 'First video of next page for preloading' },
+          total: { type: 'integer', description: 'Total count (only on first page)' },
+        },
+      },
+      InfluencerVideoFeedResponse: {
+        type: 'object',
+        properties: {
+          influencer: { $ref: '#/components/schemas/VideoFeedInfluencer' },
+          items: { type: 'array', items: { $ref: '#/components/schemas/VideoFeedItem' } },
+          nextCursor: { type: 'string' },
+          hasMore: { type: 'boolean' },
+          total: { type: 'integer' },
         },
       },
     },

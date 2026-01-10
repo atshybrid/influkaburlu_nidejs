@@ -15,6 +15,7 @@ const categories = require('./categories');
 const seo = require('./seo');
 const pr = require('./pr');
 const dop = require('./dop');
+const publicFeed = require('./publicFeed');
 const bunnyCtrl = require('../controllers/bunnyController');
 const kycCtrl = require('../controllers/kycController');
 const payCtrl = require('../controllers/paymentController');
@@ -40,6 +41,7 @@ router.use('/categories', categories);
 router.use('/seo', seo);
 router.use('/pr', pr);
 router.use('/dop', dop);
+router.use('/public/feed', publicFeed);
 
 // Public landing page
 router.get('/public/influencers', influencerCtrl.publicLandingList);
