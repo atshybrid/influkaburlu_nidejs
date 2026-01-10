@@ -1898,6 +1898,23 @@ function ensureDopOpenApi(doc) {
   ensurePath(doc, '/api/superadmin/photoshoots/requests/{ulid}/unassign-dop', defaultOpenapi.paths['/api/superadmin/photoshoots/requests/{ulid}/unassign-dop']);
 }
 
+function ensurePublicFeedOpenApi(doc) {
+  ensureTag(doc, 'Public Feed');
+  ensurePath(doc, '/api/public/feed/videos', defaultOpenapi.paths['/api/public/feed/videos']);
+  ensurePath(doc, '/api/public/feed/videos/{videoId}', defaultOpenapi.paths['/api/public/feed/videos/{videoId}']);
+  ensurePath(doc, '/api/public/feed/influencers/{influencerId}/videos', defaultOpenapi.paths['/api/public/feed/influencers/{influencerId}/videos']);
+  
+  // Ensure schemas are added
+  if (!doc.components) doc.components = {};
+  if (!doc.components.schemas) doc.components.schemas = {};
+  const schemas = ['VideoFeedInfluencer', 'VideoMetrics', 'VideoFeedItem', 'VideoFeedPrefetch', 'VideoFeedResponse', 'InfluencerVideoFeedResponse'];
+  for (const name of schemas) {
+    if (!doc.components.schemas[name] && defaultOpenapi.components?.schemas?.[name]) {
+      doc.components.schemas[name] = defaultOpenapi.components.schemas[name];
+    }
+  }
+}
+
 const outPath = path.join(__dirname, '..', 'src', 'openapi.json');
 let openapi = defaultOpenapi;
 try {
@@ -1911,5 +1928,6 @@ try {
 }
 
 ensureDopOpenApi(openapi);
+ensurePublicFeedOpenApi(openapi);
 fs.writeFileSync(outPath, JSON.stringify(openapi, null, 2) + '\n', 'utf8');
 console.log('Wrote', outPath);
