@@ -57,10 +57,16 @@ async function updateAllOnce() {
 function startMediaStatusCron() {
   const everyMs = parseInt(process.env.MEDIA_STATUS_INTERVAL_MS || '120000', 10); // default 2 min
   console.log(`MediaStatusCron: starting with interval ${everyMs} ms`);
-  updateAllOnce().then(r => console.log(`MediaStatusCron initial run:`, r));
+  updateAllOnce()
+    .then(r => console.log(`MediaStatusCron initial run:`, r))
+    .catch(e => console.error('MediaStatusCron initial run error:', e?.message || e));
   return setInterval(async () => {
-    const r = await updateAllOnce();
-    if (r.updated) console.log(`MediaStatusCron: updated ${r.updated}, failures ${r.failures}`);
+    try {
+      const r = await updateAllOnce();
+      if (r.updated) console.log(`MediaStatusCron: updated ${r.updated}, failures ${r.failures}`);
+    } catch (e) {
+      console.error('MediaStatusCron interval error:', e?.message || e);
+    }
   }, everyMs);
 }
 

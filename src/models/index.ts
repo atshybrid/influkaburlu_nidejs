@@ -8,17 +8,21 @@ try {
 }
 const { Sequelize } = require('sequelize');
 
+// Auto-detect SSL requirement from DATABASE_URL or PGSSL env
+const dbUrl = process.env.DATABASE_URL || '';
+const needsSSL = process.env.PGSSL === 'true' || dbUrl.includes('sslmode=require') || dbUrl.includes('neon.tech');
+
 const commonOpts = { 
 	logging: false,
-	pool: { max: 10, min: 0, acquire: 15000, idle: 10000 },
+	pool: { max: 10, min: 0, acquire: 30000, idle: 10000 },
 	dialect: 'postgres',
 	dialectOptions: {
 		// For pg driver
 		statement_timeout: parseInt(process.env.PG_STATEMENT_TIMEOUT_MS || '0', 10) || undefined,
 		idle_in_transaction_session_timeout: parseInt(process.env.PG_IDLE_TX_TIMEOUT_MS || '0', 10) || undefined,
-		connectTimeout: parseInt(process.env.PG_CONNECT_TIMEOUT_MS || '10000', 10),
-		connectionTimeoutMillis: parseInt(process.env.PG_CONNECT_TIMEOUT_MS || '10000', 10),
-		ssl: process.env.PGSSL === 'true' ? { rejectUnauthorized: false } : undefined
+		connectTimeout: parseInt(process.env.PG_CONNECT_TIMEOUT_MS || '30000', 10),
+		connectionTimeoutMillis: parseInt(process.env.PG_CONNECT_TIMEOUT_MS || '30000', 10),
+		ssl: needsSSL ? { require: true, rejectUnauthorized: false } : undefined
 	}
 };
 

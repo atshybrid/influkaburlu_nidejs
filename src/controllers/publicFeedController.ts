@@ -34,6 +34,7 @@ function pickBadgeName(infl: any): string | null {
  *   - category: Filter by category code (optional)
  *   - language: Filter by language code (optional)
  *   - state: Filter by state code (optional)
+ *   - status: Filter by video status (default: 'ready', can be 'uploaded' or 'all')
  *   - shuffle: "true" to get randomized results (ignores cursor, uses offset)
  *   - seed: Random seed for consistent shuffle pagination (optional)
  * 
@@ -52,6 +53,7 @@ exports.getVideoFeed = async (req, res) => {
       category,
       language,
       state,
+      status: statusFilter,
       shuffle = 'false',
       seed,
     } = req.query;
@@ -59,12 +61,24 @@ exports.getVideoFeed = async (req, res) => {
     const limit = Math.min(Math.max(parseInt(rawLimit, 10) || 10, 1), 50);
     const isShuffled = shuffle === 'true';
 
-    // Base where clause: only ready videos from Bunny
+    // Base where clause: only videos from Bunny with playbackUrl
     const where: any = {
       provider: 'bunny',
-      status: 'ready',
       playbackUrl: { [Op.ne]: null },
     };
+
+    // Status filter: 'ready', 'uploaded', 'all', or default (includes ready + uploaded)
+    // Videos with playbackUrl are playable even if not fully "ready" on Bunny
+    if (statusFilter === 'all') {
+      where.status = { [Op.in]: ['ready', 'uploaded', 'processing'] };
+    } else if (statusFilter === 'ready') {
+      where.status = 'ready';
+    } else if (statusFilter === 'uploaded') {
+      where.status = 'uploaded';
+    } else {
+      // Default: include both 'uploaded' and 'ready' since both are playable
+      where.status = { [Op.in]: ['ready', 'uploaded'] };
+    }
 
     // Build includes with filters
     const postWhere: any = { status: 'active' };
@@ -83,7 +97,7 @@ exports.getVideoFeed = async (req, res) => {
         model: Influencer,
         attributes: ['id', 'ulid', 'handle', 'profilePicUrl', 'verificationStatus', 'badges', 'bio', 'followers'],
         required: true,
-        include: [{ model: User, attributes: ['name'] }],
+        include: [{ model: User, attributes: ['name'], required: false }],
       },
     ];
 
@@ -142,11 +156,11 @@ exports.getVideoFeed = async (req, res) => {
     const hasMore = rows.length > limit;
     const resultRows = rows.slice(0, limit);
 
-    // Get total count only on first page (no cursor)
+    // Get total count only on first page (no cursor) - match the status filter used in query
     let total: number | undefined;
     if (!cursor) {
       total = await InfluencerAdMedia.count({
-        where: { provider: 'bunny', status: 'ready', playbackUrl: { [Op.ne]: null } },
+        where: { provider: 'bunny', status: { [Op.in]: ['ready', 'uploaded'] }, playbackUrl: { [Op.ne]: null } },
         include: [{ model: Post, where: postWhere, required: true }],
       });
     }
@@ -241,7 +255,7 @@ exports.getVideoById = async (req, res) => {
       where: {
         ulid: videoId,
         provider: 'bunny',
-        status: 'ready',
+        status: { [Op.in]: ['ready', 'uploaded'] },
         playbackUrl: { [Op.ne]: null },
       },
       include: [
@@ -332,7 +346,7 @@ exports.getInfluencerVideos = async (req, res) => {
     const where: any = {
       influencerId: infl.id,
       provider: 'bunny',
-      status: 'ready',
+      status: { [Op.in]: ['ready', 'uploaded'] },
       playbackUrl: { [Op.ne]: null },
     };
 
@@ -398,7 +412,7 @@ exports.getInfluencerVideos = async (req, res) => {
       where: {
         influencerId: infl.id,
         provider: 'bunny',
-        status: 'ready',
+        status: { [Op.in]: ['ready', 'uploaded'] },
         playbackUrl: { [Op.ne]: null },
       },
       include: [{ model: Post, where: { status: 'active' }, required: true }],

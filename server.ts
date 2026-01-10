@@ -1,3 +1,11 @@
+// Global error handlers to prevent silent crashes
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err);
+});
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
 try {
   // Optional: Render/hosting environments often provide env vars directly.
   // Don't crash the server if dotenv isn't installed.
@@ -221,8 +229,9 @@ async function connectWithRetry(retries = 8, delayMs = 1500) {
       console.warn('Warning: ensureInfluencerUlidColumn failed:', e?.message || e);
     }
 
-      await db.sequelize.sync();
-      console.log('Database connected and synced');
+      // Skip sync in production - schema is managed by migrations
+      // await db.sequelize.sync();
+      console.log('Database connected');
       return;
     } catch (err) {
       console.error(`DB connect failed (attempt ${i + 1}/${retries}):`, err?.original?.code || err.message);
