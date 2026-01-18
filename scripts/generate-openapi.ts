@@ -37,15 +37,16 @@ const defaultOpenapi = {
     { name: 'Locations' },
     { name: 'Media' },
     { name: 'Brands' },
-    { name: 'PR' },
+    { name: 'PR', description: 'PR Dashboard APIs for brand-assigned PR users' },
+    { name: 'SEO', description: 'SEO metadata for pages and influencer profiles' },
     { name: 'Uploads' },
     { name: 'Discovery' },
     { name: 'Categories' },
     { name: 'Bunny' },
-    { name: 'Landing' },
+    { name: 'Landing', description: 'Public landing page content' },
     { name: 'Admin' },
     { name: 'Superadmin' },
-    { name: 'DOP' },
+    { name: 'DOP', description: 'Director of Photography endpoints' },
   ],
   paths: {
     '/health': {
@@ -1394,6 +1395,1122 @@ const defaultOpenapi = {
         },
       },
     },
+
+    // ========== AUTH: OTP & Google OAuth ==========
+    '/api/auth/otp/request': {
+      post: {
+        tags: ['Auth'],
+        summary: 'Request OTP for phone verification',
+        security: [],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  phone: { type: 'string', description: 'Phone number (10-digit or with country code)' },
+                },
+                required: ['phone'],
+              },
+            },
+          },
+        },
+        responses: {
+          200: jsonResponse({ type: 'object', properties: { ok: { type: 'boolean' }, message: { type: 'string' } } }),
+          429: { description: 'Rate limited' },
+        },
+      },
+    },
+    '/api/auth/otp/verify': {
+      post: {
+        tags: ['Auth'],
+        summary: 'Verify OTP and authenticate',
+        security: [],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  phone: { type: 'string' },
+                  otp: { type: 'string' },
+                },
+                required: ['phone', 'otp'],
+              },
+            },
+          },
+        },
+        responses: {
+          200: jsonResponse('#/components/schemas/AuthResponse'),
+          400: { description: 'Invalid OTP' },
+        },
+      },
+    },
+    '/api/auth/google': {
+      post: {
+        tags: ['Auth'],
+        summary: 'Google OAuth: authenticate with Google ID token',
+        security: [],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  idToken: { type: 'string', description: 'Google ID token from OAuth flow' },
+                },
+                required: ['idToken'],
+              },
+            },
+          },
+        },
+        responses: {
+          200: jsonResponse('#/components/schemas/AuthResponse'),
+          400: { description: 'Invalid token' },
+        },
+      },
+    },
+    '/api/auth/google/start': {
+      post: {
+        tags: ['Auth'],
+        summary: 'Google OAuth: start linking flow',
+        security: [],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  idToken: { type: 'string' },
+                },
+                required: ['idToken'],
+              },
+            },
+          },
+        },
+        responses: {
+          200: jsonResponse({ type: 'object', properties: { ok: { type: 'boolean' }, needsPhone: { type: 'boolean' } } }),
+        },
+      },
+    },
+    '/api/auth/google/link': {
+      post: {
+        tags: ['Auth'],
+        summary: 'Google OAuth: link Google account to existing user',
+        security: [],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  idToken: { type: 'string' },
+                  phone: { type: 'string' },
+                  otp: { type: 'string' },
+                },
+                required: ['idToken', 'phone'],
+              },
+            },
+          },
+        },
+        responses: {
+          200: jsonResponse('#/components/schemas/AuthResponse'),
+        },
+      },
+    },
+    '/api/auth/google/init': {
+      post: {
+        tags: ['Auth'],
+        summary: 'Google OAuth: initialize authentication',
+        security: [],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  idToken: { type: 'string' },
+                },
+                required: ['idToken'],
+              },
+            },
+          },
+        },
+        responses: {
+          200: jsonResponse({ type: 'object', properties: { ok: { type: 'boolean' } } }),
+        },
+      },
+    },
+    '/api/auth/google/complete': {
+      post: {
+        tags: ['Auth'],
+        summary: 'Google OAuth: complete authentication',
+        security: [],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  idToken: { type: 'string' },
+                  phone: { type: 'string' },
+                  otp: { type: 'string' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: jsonResponse('#/components/schemas/AuthResponse'),
+        },
+      },
+    },
+
+    // ========== INFLUENCER: Referrals ==========
+    '/api/influencers/me/referral': {
+      get: {
+        tags: ['Influencers'],
+        summary: 'Get my referral info (code, stats)',
+        security: bearerAuth,
+        responses: {
+          200: jsonResponse({
+            type: 'object',
+            properties: {
+              referralCode: { type: 'string' },
+              referrerId: { type: 'integer', nullable: true },
+              referralCount: { type: 'integer' },
+              totalEarnings: { type: 'number' },
+            },
+          }),
+        },
+      },
+    },
+    '/api/influencers/me/referral/apply': {
+      post: {
+        tags: ['Influencers'],
+        summary: 'Apply a referral code',
+        security: bearerAuth,
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  code: { type: 'string' },
+                },
+                required: ['code'],
+              },
+            },
+          },
+        },
+        responses: {
+          200: jsonResponse({ type: 'object', properties: { ok: { type: 'boolean' } } }),
+          400: { description: 'Invalid or expired code' },
+        },
+      },
+    },
+    '/api/influencers/me/referral/ledger': {
+      get: {
+        tags: ['Influencers'],
+        summary: 'Get referral earnings ledger',
+        security: bearerAuth,
+        responses: {
+          200: jsonResponse({
+            type: 'object',
+            properties: {
+              items: { type: 'array', items: { type: 'object' } },
+              total: { type: 'number' },
+            },
+          }),
+        },
+      },
+    },
+    '/api/influencers/me/referral/invite': {
+      post: {
+        tags: ['Influencers'],
+        summary: 'Send referral invite',
+        security: bearerAuth,
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  phone: { type: 'string' },
+                },
+                required: ['phone'],
+              },
+            },
+          },
+        },
+        responses: {
+          200: jsonResponse({ type: 'object', properties: { ok: { type: 'boolean' } } }),
+        },
+      },
+    },
+
+    // ========== INFLUENCER: Payment Methods ==========
+    '/api/influencers/me/payment-methods/{id}': {
+      delete: {
+        tags: ['Influencers'],
+        summary: 'Delete a payment method',
+        security: bearerAuth,
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }],
+        responses: {
+          200: jsonResponse({ type: 'object', properties: { ok: { type: 'boolean' } } }),
+          404: { description: 'Not found' },
+        },
+      },
+    },
+    '/api/influencers/me/payment-methods/{id}/preferred': {
+      put: {
+        tags: ['Influencers'],
+        summary: 'Set payment method as preferred',
+        security: bearerAuth,
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }],
+        responses: {
+          200: jsonResponse({ type: 'object', properties: { ok: { type: 'boolean' } } }),
+          404: { description: 'Not found' },
+        },
+      },
+    },
+
+    // ========== INFLUENCER: Photoshoots ==========
+    '/api/influencers/me/photoshoots/requests/submit': {
+      post: {
+        tags: ['Influencers', 'Photoshoots'],
+        summary: 'Submit a photoshoot request',
+        security: bearerAuth,
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  preferredDate: { type: 'string', format: 'date' },
+                  notes: { type: 'string' },
+                  stateCode: { type: 'string' },
+                  districtCode: { type: 'string' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: jsonResponse({ type: 'object', properties: { ok: { type: 'boolean' }, request: { type: 'object' } } }),
+          400: { description: 'Bad request' },
+        },
+      },
+    },
+    '/api/influencers/me/photoshoots/requests': {
+      get: {
+        tags: ['Influencers', 'Photoshoots'],
+        summary: 'List my photoshoot requests',
+        security: bearerAuth,
+        responses: {
+          200: jsonResponse({ type: 'object', properties: { items: { type: 'array', items: { type: 'object' } } } }),
+        },
+      },
+    },
+    '/api/influencers/me/photoshoots/requests/latest': {
+      get: {
+        tags: ['Influencers', 'Photoshoots'],
+        summary: 'Get latest photoshoot request',
+        security: bearerAuth,
+        responses: {
+          200: jsonResponse({ type: 'object', properties: { request: { type: 'object', nullable: true } } }),
+        },
+      },
+    },
+
+    // ========== INFLUENCER: Ad Video ==========
+    '/api/influencers/me/ads/media': {
+      get: {
+        tags: ['Influencers'],
+        summary: 'List my ad media (videos)',
+        security: bearerAuth,
+        parameters: [
+          { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
+          { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } },
+        ],
+        responses: {
+          200: jsonResponse({ type: 'object', properties: { items: { type: 'array', items: { type: 'object' } } } }),
+        },
+      },
+    },
+    '/api/influencers/me/ads/video/init': {
+      post: {
+        tags: ['Influencers'],
+        summary: 'Initialize ad video upload (get upload URL)',
+        security: bearerAuth,
+        requestBody: {
+          required: false,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  title: { type: 'string' },
+                  caption: { type: 'string' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: jsonResponse({
+            type: 'object',
+            properties: {
+              guid: { type: 'string' },
+              uploadUrl: { type: 'string' },
+              playbackUrl: { type: 'string' },
+              postIdUlid: { type: 'string' },
+            },
+          }),
+        },
+      },
+    },
+    '/api/influencers/me/ads/video/{guid}/upload': {
+      put: {
+        tags: ['Influencers'],
+        summary: 'Upload video bytes to Bunny',
+        security: bearerAuth,
+        parameters: [{ name: 'guid', in: 'path', required: true, schema: { type: 'string' } }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/octet-stream': {
+              schema: { type: 'string', format: 'binary' },
+            },
+          },
+        },
+        responses: {
+          200: jsonResponse({ type: 'object', properties: { ok: { type: 'boolean' }, status: { type: 'string' } } }),
+          413: { description: 'File too large' },
+        },
+      },
+    },
+    '/api/influencers/me/ads/video/{guid}': {
+      delete: {
+        tags: ['Influencers'],
+        summary: 'Delete my ad video',
+        security: bearerAuth,
+        parameters: [{ name: 'guid', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: {
+          200: jsonResponse({ type: 'object', properties: { ok: { type: 'boolean' } } }),
+          404: { description: 'Not found' },
+        },
+      },
+    },
+
+    // ========== PR Dashboard ==========
+    '/api/pr/brands': {
+      get: {
+        tags: ['PR'],
+        summary: 'PR: list my assigned brands',
+        security: bearerAuth,
+        responses: {
+          200: jsonResponse({ type: 'object', properties: { items: { type: 'array', items: { type: 'object' } } } }),
+        },
+      },
+    },
+    '/api/pr/brands/{brandUlid}/ads': {
+      get: {
+        tags: ['PR'],
+        summary: 'PR: list ads for a brand',
+        security: bearerAuth,
+        parameters: [{ name: 'brandUlid', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: {
+          200: jsonResponse({ type: 'object', properties: { items: { type: 'array', items: { type: 'object' } } } }),
+        },
+      },
+    },
+    '/api/pr/ads/{id}': {
+      get: {
+        tags: ['PR'],
+        summary: 'PR: get ad details',
+        security: bearerAuth,
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: {
+          200: jsonResponse({ type: 'object' }),
+          404: { description: 'Not found' },
+        },
+      },
+    },
+    '/api/pr/commissions': {
+      get: {
+        tags: ['PR'],
+        summary: 'PR: list my commissions',
+        security: bearerAuth,
+        parameters: [
+          { name: 'status', in: 'query', schema: { type: 'string', enum: ['pending', 'paid', 'all'] } },
+        ],
+        responses: {
+          200: jsonResponse({ type: 'object', properties: { items: { type: 'array', items: { type: 'object' } } } }),
+        },
+      },
+    },
+
+    // ========== SEO ==========
+    '/api/seo/influencer/{slug}': {
+      get: {
+        tags: ['SEO'],
+        summary: 'Get SEO meta for influencer page',
+        security: [],
+        parameters: [{ name: 'slug', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: {
+          200: jsonResponse({
+            type: 'object',
+            properties: {
+              title: { type: 'string' },
+              description: { type: 'string' },
+              keywords: { type: 'string' },
+              ogImage: { type: 'string' },
+            },
+          }),
+        },
+      },
+    },
+    '/api/seo/influencer/{slug}/bundle': {
+      get: {
+        tags: ['SEO'],
+        summary: 'Get full SEO bundle for influencer (includes structured data)',
+        security: [],
+        parameters: [{ name: 'slug', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: {
+          200: jsonResponse({ type: 'object' }),
+        },
+      },
+    },
+    '/api/seo/page/{slug}': {
+      get: {
+        tags: ['SEO'],
+        summary: 'Get SEO meta for static page',
+        security: [],
+        parameters: [{ name: 'slug', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: {
+          200: jsonResponse({
+            type: 'object',
+            properties: {
+              title: { type: 'string' },
+              description: { type: 'string' },
+              keywords: { type: 'string' },
+            },
+          }),
+        },
+      },
+    },
+
+    // ========== Profile Builder ==========
+    '/api/profile-builder/generate-from-me': {
+      post: {
+        tags: ['Profile Builder'],
+        summary: 'Generate profile pack from logged-in influencer',
+        security: bearerAuth,
+        responses: {
+          200: jsonResponse({ type: 'object', properties: { id: { type: 'string' }, status: { type: 'string' } } }),
+        },
+      },
+    },
+    '/api/profile-builder/generate-photos': {
+      post: {
+        tags: ['Profile Builder'],
+        summary: 'Generate AI photos for profile',
+        security: bearerAuth,
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  prompt: { type: 'string' },
+                  style: { type: 'string' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: jsonResponse({ type: 'object', properties: { photos: { type: 'array', items: { type: 'string' } } } }),
+        },
+      },
+    },
+    '/api/profile-builder/pack/{id}/photos': {
+      post: {
+        tags: ['Profile Builder'],
+        summary: 'Add photo to profile pack',
+        security: bearerAuth,
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  imageUrl: { type: 'string' },
+                },
+                required: ['imageUrl'],
+              },
+            },
+          },
+        },
+        responses: {
+          200: jsonResponse({ type: 'object', properties: { ok: { type: 'boolean' } } }),
+        },
+      },
+      get: {
+        tags: ['Profile Builder'],
+        summary: 'Get photos in profile pack',
+        security: [],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: {
+          200: jsonResponse({ type: 'object', properties: { photos: { type: 'array', items: { type: 'object' } } } }),
+        },
+      },
+    },
+
+    // ========== Public Landing ==========
+    '/api/public/influencers': {
+      get: {
+        tags: ['Landing'],
+        summary: 'Public: list featured influencers',
+        security: [],
+        parameters: [
+          { name: 'limit', in: 'query', schema: { type: 'integer', default: 10 } },
+          { name: 'category', in: 'query', schema: { type: 'string' } },
+        ],
+        responses: {
+          200: jsonResponse({ type: 'object', properties: { items: { type: 'array', items: { type: 'object' } } } }),
+        },
+      },
+    },
+    '/api/public/landing': {
+      get: {
+        tags: ['Landing'],
+        summary: 'Public: get landing page content',
+        security: [],
+        responses: {
+          200: jsonResponse({ type: 'object' }),
+        },
+      },
+    },
+    '/api/public/trusted': {
+      get: {
+        tags: ['Landing'],
+        summary: 'Public: get trusted brands/partners',
+        security: [],
+        responses: {
+          200: jsonResponse({ type: 'object', properties: { items: { type: 'array', items: { type: 'object' } } } }),
+        },
+      },
+    },
+    '/api/public/case-studies': {
+      get: {
+        tags: ['Landing'],
+        summary: 'Public: get case studies',
+        security: [],
+        responses: {
+          200: jsonResponse({ type: 'object', properties: { items: { type: 'array', items: { type: 'object' } } } }),
+        },
+      },
+    },
+    '/api/public/testimonials': {
+      get: {
+        tags: ['Landing'],
+        summary: 'Public: get testimonials',
+        security: [],
+        responses: {
+          200: jsonResponse({ type: 'object', properties: { items: { type: 'array', items: { type: 'object' } } } }),
+        },
+      },
+    },
+
+    // ========== Admin: Landing ==========
+    '/api/admin/landing': {
+      get: {
+        tags: ['Admin'],
+        summary: 'Admin: list landing content',
+        security: bearerAuth,
+        responses: {
+          200: jsonResponse({ type: 'object', properties: { items: { type: 'array', items: { type: 'object' } } } }),
+        },
+      },
+      post: {
+        tags: ['Admin'],
+        summary: 'Admin: create landing content',
+        security: bearerAuth,
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  key: { type: 'string' },
+                  value: { type: 'object' },
+                },
+                required: ['key', 'value'],
+              },
+            },
+          },
+        },
+        responses: {
+          200: jsonResponse({ type: 'object', properties: { ok: { type: 'boolean' } } }),
+        },
+      },
+    },
+    '/api/admin/landing/{key}': {
+      get: {
+        tags: ['Admin'],
+        summary: 'Admin: get landing content by key',
+        security: bearerAuth,
+        parameters: [{ name: 'key', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: {
+          200: jsonResponse({ type: 'object' }),
+          404: { description: 'Not found' },
+        },
+      },
+      post: {
+        tags: ['Admin'],
+        summary: 'Admin: create landing content by key',
+        security: bearerAuth,
+        parameters: [{ name: 'key', in: 'path', required: true, schema: { type: 'string' } }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: { type: 'object' },
+            },
+          },
+        },
+        responses: {
+          200: jsonResponse({ type: 'object', properties: { ok: { type: 'boolean' } } }),
+        },
+      },
+      put: {
+        tags: ['Admin'],
+        summary: 'Admin: upsert landing content by key',
+        security: bearerAuth,
+        parameters: [{ name: 'key', in: 'path', required: true, schema: { type: 'string' } }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: { type: 'object' },
+            },
+          },
+        },
+        responses: {
+          200: jsonResponse({ type: 'object', properties: { ok: { type: 'boolean' } } }),
+        },
+      },
+      patch: {
+        tags: ['Admin'],
+        summary: 'Admin: patch landing content by key',
+        security: bearerAuth,
+        parameters: [{ name: 'key', in: 'path', required: true, schema: { type: 'string' } }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: { type: 'object' },
+            },
+          },
+        },
+        responses: {
+          200: jsonResponse({ type: 'object', properties: { ok: { type: 'boolean' } } }),
+        },
+      },
+      delete: {
+        tags: ['Admin'],
+        summary: 'Admin: delete landing content by key',
+        security: bearerAuth,
+        parameters: [{ name: 'key', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: {
+          200: jsonResponse({ type: 'object', properties: { ok: { type: 'boolean' } } }),
+          404: { description: 'Not found' },
+        },
+      },
+    },
+
+    // ========== Admin: Bunny ==========
+    '/api/admin/bunny/videos/{guid}': {
+      delete: {
+        tags: ['Bunny', 'Admin'],
+        summary: 'Admin: delete Bunny video',
+        security: bearerAuth,
+        parameters: [{ name: 'guid', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: {
+          200: jsonResponse({ type: 'object', properties: { ok: { type: 'boolean' } } }),
+          404: { description: 'Not found' },
+        },
+      },
+    },
+
+    // ========== Admin: KYC ==========
+    '/api/admin/kyc': {
+      get: {
+        tags: ['Admin'],
+        summary: 'Admin: list KYC submissions',
+        security: bearerAuth,
+        parameters: [
+          { name: 'status', in: 'query', schema: { type: 'string', enum: ['pending', 'approved', 'rejected'] } },
+          { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
+          { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } },
+        ],
+        responses: {
+          200: jsonResponse({ type: 'object', properties: { items: { type: 'array', items: { type: 'object' } } } }),
+        },
+      },
+    },
+    '/api/admin/kyc/{influencerId}': {
+      get: {
+        tags: ['Admin'],
+        summary: 'Admin: get KYC details for influencer',
+        security: bearerAuth,
+        parameters: [{ name: 'influencerId', in: 'path', required: true, schema: { type: 'integer' } }],
+        responses: {
+          200: jsonResponse({ type: 'object' }),
+          404: { description: 'Not found' },
+        },
+      },
+    },
+    '/api/admin/kyc/{influencerId}/status': {
+      put: {
+        tags: ['Admin'],
+        summary: 'Admin: set KYC status',
+        security: bearerAuth,
+        parameters: [{ name: 'influencerId', in: 'path', required: true, schema: { type: 'integer' } }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  status: { type: 'string', enum: ['pending', 'approved', 'rejected'] },
+                  reason: { type: 'string' },
+                },
+                required: ['status'],
+              },
+            },
+          },
+        },
+        responses: {
+          200: jsonResponse({ type: 'object', properties: { ok: { type: 'boolean' } } }),
+        },
+      },
+    },
+
+    // ========== Admin: Payments ==========
+    '/api/admin/payments': {
+      get: {
+        tags: ['Admin'],
+        summary: 'Admin: list payments',
+        security: bearerAuth,
+        parameters: [
+          { name: 'status', in: 'query', schema: { type: 'string' } },
+          { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
+          { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } },
+        ],
+        responses: {
+          200: jsonResponse({ type: 'object', properties: { items: { type: 'array', items: { type: 'object' } } } }),
+        },
+      },
+    },
+    '/api/admin/payments/{id}/status': {
+      put: {
+        tags: ['Admin'],
+        summary: 'Admin: set payment status',
+        security: bearerAuth,
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  status: { type: 'string' },
+                },
+                required: ['status'],
+              },
+            },
+          },
+        },
+        responses: {
+          200: jsonResponse({ type: 'object', properties: { ok: { type: 'boolean' } } }),
+        },
+      },
+    },
+
+    // ========== Admin: SEO ==========
+    '/api/admin/seo/influencer/{id}': {
+      put: {
+        tags: ['Admin', 'SEO'],
+        summary: 'Admin: upsert influencer SEO',
+        security: bearerAuth,
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  title: { type: 'string' },
+                  description: { type: 'string' },
+                  keywords: { type: 'string' },
+                  ogImage: { type: 'string' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: jsonResponse({ type: 'object', properties: { ok: { type: 'boolean' } } }),
+        },
+      },
+    },
+    '/api/admin/seo/page/{slug}': {
+      put: {
+        tags: ['Admin', 'SEO'],
+        summary: 'Admin: upsert page SEO',
+        security: bearerAuth,
+        parameters: [{ name: 'slug', in: 'path', required: true, schema: { type: 'string' } }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  title: { type: 'string' },
+                  description: { type: 'string' },
+                  keywords: { type: 'string' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: jsonResponse({ type: 'object', properties: { ok: { type: 'boolean' } } }),
+        },
+      },
+    },
+
+    // ========== Superadmin ==========
+    '/api/superadmin/dashboard': {
+      get: {
+        tags: ['Superadmin'],
+        summary: 'Superadmin: get dashboard stats',
+        security: bearerAuth,
+        responses: {
+          200: jsonResponse({ type: 'object' }),
+        },
+      },
+    },
+    '/api/superadmin/prs': {
+      post: {
+        tags: ['Superadmin', 'PR'],
+        summary: 'Superadmin: create PR user',
+        security: bearerAuth,
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  name: { type: 'string' },
+                  phone: { type: 'string' },
+                  email: { type: 'string' },
+                  password: { type: 'string' },
+                },
+                required: ['name', 'phone'],
+              },
+            },
+          },
+        },
+        responses: {
+          200: jsonResponse({ type: 'object', properties: { ok: { type: 'boolean' }, user: { type: 'object' } } }),
+        },
+      },
+    },
+    '/api/superadmin/brands/{brandUlid}/pr': {
+      post: {
+        tags: ['Superadmin', 'PR'],
+        summary: 'Superadmin: assign PR to brand',
+        security: bearerAuth,
+        parameters: [{ name: 'brandUlid', in: 'path', required: true, schema: { type: 'string' } }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  prUserId: { type: 'integer' },
+                },
+                required: ['prUserId'],
+              },
+            },
+          },
+        },
+        responses: {
+          200: jsonResponse({ type: 'object', properties: { ok: { type: 'boolean' } } }),
+        },
+      },
+    },
+    '/api/superadmin/pr-commissions': {
+      get: {
+        tags: ['Superadmin', 'PR'],
+        summary: 'Superadmin: list PR commissions',
+        security: bearerAuth,
+        parameters: [
+          { name: 'status', in: 'query', schema: { type: 'string', enum: ['pending', 'paid'] } },
+        ],
+        responses: {
+          200: jsonResponse({ type: 'object', properties: { items: { type: 'array', items: { type: 'object' } } } }),
+        },
+      },
+    },
+    '/api/superadmin/pr-commissions/{id}/paid': {
+      put: {
+        tags: ['Superadmin', 'PR'],
+        summary: 'Superadmin: mark PR commission as paid',
+        security: bearerAuth,
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }],
+        responses: {
+          200: jsonResponse({ type: 'object', properties: { ok: { type: 'boolean' } } }),
+        },
+      },
+    },
+    '/api/superadmin/referral-commissions': {
+      get: {
+        tags: ['Superadmin'],
+        summary: 'Superadmin: list referral commissions',
+        security: bearerAuth,
+        parameters: [
+          { name: 'status', in: 'query', schema: { type: 'string', enum: ['pending', 'paid'] } },
+        ],
+        responses: {
+          200: jsonResponse({ type: 'object', properties: { items: { type: 'array', items: { type: 'object' } } } }),
+        },
+      },
+    },
+    '/api/superadmin/referral-commissions/{id}/paid': {
+      put: {
+        tags: ['Superadmin'],
+        summary: 'Superadmin: mark referral commission as paid',
+        security: bearerAuth,
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }],
+        responses: {
+          200: jsonResponse({ type: 'object', properties: { ok: { type: 'boolean' } } }),
+        },
+      },
+    },
+    '/api/superadmin/photoshoots/requests': {
+      get: {
+        tags: ['Superadmin', 'Photoshoots'],
+        summary: 'Superadmin: list all photoshoot requests',
+        security: bearerAuth,
+        parameters: [
+          { name: 'status', in: 'query', schema: { type: 'string' } },
+          { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
+          { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } },
+        ],
+        responses: {
+          200: jsonResponse({ type: 'object', properties: { items: { type: 'array', items: { type: 'object' } } } }),
+        },
+      },
+    },
+    '/api/superadmin/photoshoots/requests/{ulid}': {
+      get: {
+        tags: ['Superadmin', 'Photoshoots'],
+        summary: 'Superadmin: get photoshoot request details',
+        security: bearerAuth,
+        parameters: [{ name: 'ulid', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: {
+          200: jsonResponse({ type: 'object' }),
+          404: { description: 'Not found' },
+        },
+      },
+    },
+    '/api/superadmin/photoshoots/requests/{ulid}/approve': {
+      put: {
+        tags: ['Superadmin', 'Photoshoots'],
+        summary: 'Superadmin: approve photoshoot request',
+        security: bearerAuth,
+        parameters: [{ name: 'ulid', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: {
+          200: jsonResponse({ type: 'object', properties: { ok: { type: 'boolean' }, request: { type: 'object' } } }),
+        },
+      },
+    },
+    '/api/superadmin/photoshoots/requests/{ulid}/reject': {
+      put: {
+        tags: ['Superadmin', 'Photoshoots'],
+        summary: 'Superadmin: reject photoshoot request',
+        security: bearerAuth,
+        parameters: [{ name: 'ulid', in: 'path', required: true, schema: { type: 'string' } }],
+        requestBody: {
+          required: false,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  reason: { type: 'string' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: jsonResponse({ type: 'object', properties: { ok: { type: 'boolean' }, request: { type: 'object' } } }),
+        },
+      },
+    },
+    '/api/superadmin/photoshoots/requests/{ulid}/schedule': {
+      put: {
+        tags: ['Superadmin', 'Photoshoots'],
+        summary: 'Superadmin: schedule photoshoot',
+        security: bearerAuth,
+        parameters: [{ name: 'ulid', in: 'path', required: true, schema: { type: 'string' } }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  scheduledDate: { type: 'string', format: 'date' },
+                  scheduledTime: { type: 'string' },
+                  venue: { type: 'string' },
+                },
+                required: ['scheduledDate'],
+              },
+            },
+          },
+        },
+        responses: {
+          200: jsonResponse({ type: 'object', properties: { ok: { type: 'boolean' }, request: { type: 'object' } } }),
+        },
+      },
+    },
   },
   components: {
     securitySchemes: {
@@ -1820,13 +2937,25 @@ const defaultOpenapi = {
           views: { type: 'integer', default: 0 },
         },
       },
+      VideoUrls: {
+        type: 'object',
+        description: 'Video playback URLs for different platforms. Use HLS for mobile apps, iframe for web.',
+        properties: {
+          hls: { type: 'string', nullable: true, description: 'HLS streaming URL (.m3u8) - Use for React Native, iOS, Android native players' },
+          mp4: { type: 'string', nullable: true, description: 'MP4 direct URL (720p) - Fallback for older video players' },
+          iframe: { type: 'string', nullable: true, description: 'Embed iframe URL - Use for web/browser only' },
+          directPlay: { type: 'string', nullable: true, description: 'Direct play URL - Auto-selects best format' },
+        },
+      },
       VideoFeedItem: {
         type: 'object',
         properties: {
           videoId: { type: 'string', description: 'Video ULID' },
           videoGuid: { type: 'string', description: 'Bunny Stream GUID' },
-          videoUrl: { type: 'string', description: 'Playback URL' },
+          video: { $ref: '#/components/schemas/VideoUrls', description: 'Video URLs for different platforms (HLS, MP4, iframe)' },
+          videoUrl: { type: 'string', description: 'DEPRECATED: Use video.iframe instead. Kept for backward compatibility.' },
           thumbnailUrl: { type: 'string' },
+          previewUrl: { type: 'string', nullable: true, description: 'Animated preview (WebP)' },
           durationSec: { type: 'number' },
           postId: { type: 'string', description: 'Post ULID' },
           caption: { type: 'string' },
@@ -1841,7 +2970,14 @@ const defaultOpenapi = {
       VideoFeedPrefetch: {
         type: 'object',
         properties: {
-          videoUrl: { type: 'string' },
+          videoUrl: { type: 'string', description: 'DEPRECATED: Use video.hls instead' },
+          video: { 
+            type: 'object',
+            properties: {
+              hls: { type: 'string', nullable: true },
+              mp4: { type: 'string', nullable: true },
+            },
+          },
           thumbnailUrl: { type: 'string' },
         },
       },

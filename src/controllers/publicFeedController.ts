@@ -8,10 +8,12 @@
  *   - Includes influencer details with each video
  *   - Pre-fetch hints for smooth UX
  *   - Randomization option for discovery
+ *   - Returns multiple video URL formats (HLS, MP4, iframe) for cross-platform support
  */
 
 const { InfluencerAdMedia, Influencer, Post, User } = require('../models');
 const { Op, Sequelize } = require('sequelize');
+const { buildVideoUrls } = require('../services/bunny');
 
 // Helper: pick display badge name
 function pickBadgeName(infl: any): string | null {
@@ -173,12 +175,24 @@ exports.getVideoFeed = async (req, res) => {
       const handle = infl?.handle || null;
       const badgeName = pickBadgeName(infl);
 
+      // Build video URLs for all platforms (HLS for mobile, iframe for web, MP4 as fallback)
+      const videoUrls = buildVideoUrls(r.guid);
+
       return {
         // Video details
         videoId: r.ulid,
         videoGuid: r.guid,
+        // NEW: video object with multiple URL formats
+        video: {
+          hls: videoUrls.hls,           // For React Native / Mobile apps
+          mp4: videoUrls.mp4,           // Fallback for older players
+          iframe: videoUrls.iframe,     // For web embedding
+          directPlay: videoUrls.directPlay, // Auto-selects best format
+        },
+        // DEPRECATED: kept for backward compatibility, use video.iframe instead
         videoUrl: r.playbackUrl,
-        thumbnailUrl: r.thumbnailUrl || null,
+        thumbnailUrl: r.thumbnailUrl || videoUrls.thumbnail || null,
+        previewUrl: videoUrls.preview || null,
         durationSec: r.durationSec || null,
 
         // Post details
@@ -219,12 +233,17 @@ exports.getVideoFeed = async (req, res) => {
     }
 
     // Prefetch hint: get first video URL of next batch
-    let prefetch: { videoUrl: string; thumbnailUrl?: string } | null = null;
+    let prefetch: { videoUrl: string; video?: { hls: string | null; mp4: string | null }; thumbnailUrl?: string } | null = null;
     if (hasMore && rows.length > limit) {
       const nextFirst = rows[limit];
+      const nextVideoUrls = buildVideoUrls(nextFirst.guid);
       prefetch = {
-        videoUrl: nextFirst.playbackUrl,
-        thumbnailUrl: nextFirst.thumbnailUrl || undefined,
+        videoUrl: nextFirst.playbackUrl, // DEPRECATED
+        video: {
+          hls: nextVideoUrls.hls,
+          mp4: nextVideoUrls.mp4,
+        },
+        thumbnailUrl: nextFirst.thumbnailUrl || nextVideoUrls.thumbnail || undefined,
       };
     }
 
@@ -284,11 +303,23 @@ exports.getVideoById = async (req, res) => {
     const handle = infl?.handle || null;
     const badgeName = pickBadgeName(infl);
 
+    // Build video URLs for all platforms
+    const videoUrls = buildVideoUrls(row.guid);
+
     return res.json({
       videoId: row.ulid,
       videoGuid: row.guid,
+      // NEW: video object with multiple URL formats
+      video: {
+        hls: videoUrls.hls,           // For React Native / Mobile apps
+        mp4: videoUrls.mp4,           // Fallback for older players
+        iframe: videoUrls.iframe,     // For web embedding
+        directPlay: videoUrls.directPlay, // Auto-selects best format
+      },
+      // DEPRECATED: kept for backward compatibility
       videoUrl: row.playbackUrl,
-      thumbnailUrl: row.thumbnailUrl || null,
+      thumbnailUrl: row.thumbnailUrl || videoUrls.thumbnail || null,
+      previewUrl: videoUrls.preview || null,
       durationSec: row.durationSec || null,
       sizeBytes: row.sizeBytes || null,
 
@@ -387,11 +418,22 @@ exports.getInfluencerVideos = async (req, res) => {
 
     const items = resultRows.map((r: any) => {
       const post = r.Post;
+      // Build video URLs for all platforms
+      const videoUrls = buildVideoUrls(r.guid);
       return {
         videoId: r.ulid,
         videoGuid: r.guid,
+        // NEW: video object with multiple URL formats
+        video: {
+          hls: videoUrls.hls,           // For React Native / Mobile apps
+          mp4: videoUrls.mp4,           // Fallback for older players
+          iframe: videoUrls.iframe,     // For web embedding
+          directPlay: videoUrls.directPlay,
+        },
+        // DEPRECATED: kept for backward compatibility
         videoUrl: r.playbackUrl,
-        thumbnailUrl: r.thumbnailUrl || null,
+        thumbnailUrl: r.thumbnailUrl || videoUrls.thumbnail || null,
+        previewUrl: videoUrls.preview || null,
         durationSec: r.durationSec || null,
         postId: post?.ulid || null,
         caption: post?.caption || r.meta?.caption || null,
