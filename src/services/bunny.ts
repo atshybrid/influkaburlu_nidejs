@@ -7,47 +7,85 @@ const CDN_HOSTNAME = process.env.BUNNY_STREAM_CDN_HOSTNAME || '';
 const CDN_TOKEN_KEY = process.env.BUNNY_CDN_TOKEN_KEY || ''; // Token Authentication Key from Bunny CDN
 
 /**
- * Generate a signed token for Bunny CDN Token Authentication
- * @see https://docs.bunny.net/docs/stream-security-token-authentication
- * @param url - Full URL to sign (without query params)
- * @param expiresInSeconds - Token validity in seconds (default: 24 hours)
- * @returns Query string with token and expires params
+ * Generate a signed URL for Bunny CDN Token Authentication
+ * Official implementation based on: https://github.com/BunnyWay/BunnyCDN.TokenAuthentication/blob/master/nodejs/token.js
+ * 
+ * @param url - Full CDN URL to sign
+ * @param securityKey - Token authentication key from Bunny CDN
+ * @param expirationTime - Token validity in seconds (default: 24 hours)
+ * @param pathAllowed - Optional: partial path for token (allows access to all files in that directory)
+ * @returns Signed URL
  */
-function generateBunnyToken(url: string, expiresInSeconds: number = 86400): string {
-  const tokenKey = CDN_TOKEN_KEY || process.env.BUNNY_CDN_TOKEN_KEY;
-  if (!tokenKey) {
-    // No token key configured - return unsigned URL (Bunny CDN must allow public access)
-    return '';
+function signBunnyCdnUrl(
+  url: string,
+  securityKey: string,
+  expirationTime: number = 86400,
+  pathAllowed?: string
+): string {
+  if (!securityKey || !url) {
+    return url;
   }
 
-  // Calculate expiration timestamp (Unix timestamp)
-  const expires = Math.floor(Date.now() / 1000) + expiresInSeconds;
-
-  // Parse the URL to get the path
-  const urlObj = new URL(url);
-  const path = urlObj.pathname;
-
-  // Bunny CDN token format: SHA256(tokenKey + path + expires)
-  // Base64 encoded, URL-safe (replace +/= with -_)
-  const hashableBase = tokenKey + path + expires;
-  const hash = nodeCrypto.createHash('sha256').update(hashableBase).digest('base64');
-  const token = hash.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
-
-  return `token=${token}&expires=${expires}`;
+  let parameterData = '';
+  let parameterDataUrl = '';
+  let signaturePath = '';
+  
+  const expires = Math.floor(Date.now() / 1000) + expirationTime;
+  const parsedUrl = new URL(url);
+  
+  // If pathAllowed is specified, use it as the signature path
+  if (pathAllowed) {
+    signaturePath = pathAllowed;
+    parameterData = `token_path=${signaturePath}`;
+    parameterDataUrl = `&token_path=${encodeURIComponent(signaturePath)}`;
+  } else {
+    signaturePath = decodeURIComponent(parsedUrl.pathname);
+  }
+  
+  // Generate the hashable base: securityKey + signaturePath + expires + parameterData
+  const hashableBase = securityKey + signaturePath + expires + parameterData;
+  
+  // Generate SHA256 hash, then Base64 encode
+  let token = nodeCrypto.createHash('sha256').update(hashableBase).digest('base64');
+  
+  // URL-safe Base64: replace + with -, / with _, remove =
+  token = token.replace(/\n/g, '').replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+  
+  // Return signed URL with query parameters
+  return `${parsedUrl.protocol}//${parsedUrl.host}${parsedUrl.pathname}?token=${token}${parameterDataUrl}&expires=${expires}`;
 }
 
 /**
- * Sign a CDN URL with Bunny Token Authentication
- * @param baseUrl - Base URL without query params
- * @returns Signed URL with token (or original URL if no token key configured)
+ * Sign a Bunny Stream CDN URL with Token Authentication
+ * For HLS streams, uses token_path to allow access to all segment files
+ * 
+ * @param baseUrl - Full URL without query params
+ * @param useTokenPath - If true, uses the directory as token_path (for HLS)
+ * @returns Signed URL with token
  */
-function signCdnUrl(baseUrl: string | null): string | null {
+function signStreamUrl(baseUrl: string | null, useTokenPath: boolean = false): string | null {
   if (!baseUrl) return null;
   
-  const tokenParams = generateBunnyToken(baseUrl);
-  if (!tokenParams) return baseUrl; // No token key - return unsigned
+  const tokenKey = CDN_TOKEN_KEY || process.env.BUNNY_CDN_TOKEN_KEY;
+  if (!tokenKey) return baseUrl;
   
-  return `${baseUrl}?${tokenParams}`;
+  try {
+    // For HLS/video, use the video directory as token_path so all segment files work
+    let pathAllowed: string | undefined;
+    if (useTokenPath) {
+      const parsedUrl = new URL(baseUrl);
+      const path = parsedUrl.pathname;
+      // Extract directory path (e.g., /videoId/ from /videoId/playlist.m3u8)
+      const lastSlash = path.lastIndexOf('/');
+      if (lastSlash > 0) {
+        pathAllowed = path.substring(0, lastSlash + 1);
+      }
+    }
+    
+    return signBunnyCdnUrl(baseUrl, tokenKey, 86400, pathAllowed);
+  } catch {
+    return baseUrl;
+  }
 }
 
 /**
@@ -55,6 +93,10 @@ function signCdnUrl(baseUrl: string | null): string | null {
  * @param videoGuid - Bunny Stream video GUID
  * @param signed - Whether to sign URLs with token authentication (default: true)
  * @returns Object with hls, mp4, iframe URLs
+ * 
+ * NOTE: If token authentication is enabled on Bunny CDN but the token key is incorrect,
+ * use the `directPlay` URL which works through Bunny's own player without CDN token auth.
+ * Priority for React Native: directPlay > mp4 > hls
  */
 function buildVideoUrls(videoGuid: string, signed: boolean = true): {
   hls: string | null;
@@ -77,18 +119,25 @@ function buildVideoUrls(videoGuid: string, signed: boolean = true): {
   const thumbnailBase = cdnHost ? `https://${cdnHost}/${videoGuid}/thumbnail.jpg` : null;
   const previewBase = cdnHost ? `https://${cdnHost}/${videoGuid}/preview.webp` : null;
 
-  // iframe and directPlay don't need CDN token signing (they use Bunny's own auth)
+  // These URLs work without CDN token auth (recommended for React Native)
   const iframe = libraryId ? `https://iframe.mediadelivery.net/embed/${libraryId}/${videoGuid}` : null;
+  // directPlay auto-redirects to the best format - works without token auth
   const directPlay = libraryId ? `https://video.bunnycdn.com/play/${libraryId}/${videoGuid}` : null;
 
-  if (signed) {
+  // Check if we have a valid token key for signing
+  const tokenKey = CDN_TOKEN_KEY || process.env.BUNNY_CDN_TOKEN_KEY;
+  const canSign = signed && Boolean(tokenKey);
+
+  if (canSign) {
     return {
-      hls: signCdnUrl(hlsBase),
-      mp4: signCdnUrl(mp4Base),
+      // HLS needs token_path=true to allow segment file access
+      hls: signStreamUrl(hlsBase, true),
+      // MP4, thumbnail, preview are single files - no token_path needed
+      mp4: signStreamUrl(mp4Base, false),
       iframe,
       directPlay,
-      thumbnail: signCdnUrl(thumbnailBase),
-      preview: signCdnUrl(previewBase),
+      thumbnail: signStreamUrl(thumbnailBase, false),
+      preview: signStreamUrl(previewBase, false),
     };
   }
 
@@ -112,11 +161,11 @@ function buildMp4Url(videoGuid: string, resolution: number = 720, signed: boolea
   const cdnHost = CDN_HOSTNAME || process.env.BUNNY_STREAM_CDN_HOSTNAME;
   if (!cdnHost || !videoGuid) return null;
   const baseUrl = `https://${cdnHost}/${videoGuid}/play_${resolution}p.mp4`;
-  return signed ? signCdnUrl(baseUrl) : baseUrl;
+  return signed ? signStreamUrl(baseUrl, false) : baseUrl;
 }
 
 /**
- * Build HLS URL (signed)
+ * Build HLS URL (signed with token_path for segment access)
  * @param videoGuid - Bunny Stream video GUID
  * @param signed - Whether to sign URL with token authentication (default: true)
  */
@@ -124,7 +173,8 @@ function buildHlsUrl(videoGuid: string, signed: boolean = true): string | null {
   const cdnHost = CDN_HOSTNAME || process.env.BUNNY_STREAM_CDN_HOSTNAME;
   if (!cdnHost || !videoGuid) return null;
   const baseUrl = `https://${cdnHost}/${videoGuid}/playlist.m3u8`;
-  return signed ? signCdnUrl(baseUrl) : baseUrl;
+  // HLS needs token_path=true to allow segment file access
+  return signed ? signStreamUrl(baseUrl, true) : baseUrl;
 }
 
 /**
@@ -138,10 +188,18 @@ function buildIframeUrl(videoGuid: string): string | null {
 }
 
 /**
- * @deprecated Use signCdnUrl instead - kept for backwards compatibility
+ * @deprecated Use signStreamUrl instead - kept for backwards compatibility
  */
 function signPullZoneUrl(urlPath: string): string {
-  return signCdnUrl(urlPath) || urlPath;
+  return signStreamUrl(urlPath, false) || urlPath;
+}
+
+/**
+ * Legacy signCdnUrl - now uses signStreamUrl internally
+ */
+function signCdnUrl(baseUrl: string | null, useTokenPath: boolean = false): string | null {
+  if (!baseUrl) return null;
+  return signStreamUrl(baseUrl, useTokenPath);
 }
 
 async function getVideoLibraryAuthHeader() {
@@ -154,7 +212,8 @@ async function getVideoLibraryAuthHeader() {
 module.exports = { 
   signPullZoneUrl, 
   signCdnUrl,
-  generateBunnyToken,
+  signStreamUrl,
+  signBunnyCdnUrl,
   getVideoLibraryAuthHeader,
   buildVideoUrls,
   buildMp4Url,

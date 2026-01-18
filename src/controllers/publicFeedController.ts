@@ -183,11 +183,15 @@ exports.getVideoFeed = async (req, res) => {
         videoId: r.ulid,
         videoGuid: r.guid,
         // NEW: video object with multiple URL formats
+        // Priority for React Native: directPlay > mp4 > hls
+        // directPlay works without CDN token auth (auto-redirects to best format)
         video: {
-          hls: videoUrls.hls,           // For React Native / Mobile apps
-          mp4: videoUrls.mp4,           // Fallback for older players
-          iframe: videoUrls.iframe,     // For web embedding
-          directPlay: videoUrls.directPlay, // Auto-selects best format
+          hls: videoUrls.hls,                 // For React Native / Mobile apps (may need token auth)
+          mp4: videoUrls.mp4,                 // Direct MP4 fallback (may need token auth)
+          iframe: videoUrls.iframe,           // For web embedding
+          directPlay: videoUrls.directPlay,  // RECOMMENDED: Auto-selects best format, no token auth needed
+          // Convenience: best URL for React Native (use this first)
+          url: videoUrls.directPlay || videoUrls.mp4 || videoUrls.hls,
         },
         // DEPRECATED: kept for backward compatibility, use video.iframe instead
         videoUrl: r.playbackUrl,
